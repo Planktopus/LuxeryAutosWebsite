@@ -1,2 +1,9 @@
 --- Sales Log ---
-No sales logged yet.
+Date: 29/05/2026, 00:57:03
+Salesperson: Cynthia Jones
+Customer: Bob jones
+ID Number: ABC1234
+Vehicle: Dinka Urban
+Sell Price: $7,033
+Discount: 3%
+License Plate: ABCD1234
