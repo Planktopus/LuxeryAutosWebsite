@@ -345,19 +345,19 @@ const categories = [
 ];
 
 const roster = [
-    { username: 'quandale', password: 'Quandale382' },
-    { username: 'jordan-k', password: 'Jordan921' },
-    { username: 'saylor', password: 'Saylor576' },
-    { username: 'nico', password: 'Nico193' },
-    { username: 'rosalynn', password: 'Rosalynn651' },
-    { username: 'jordan-t', password: 'Jordan841' },
-    { username: 'dan', password: 'Dan504' },
-    { username: 'johnny', password: 'Johnny905' },
-    { username: 'tobias', password: 'Tobias739' },
-    { username: 'cynthia', password: 'Cynthia312' },
-    { username: 'tyler', password: 'Tyler778' },
-    { username: 'rumi', password: 'Rumi264' },
-    { username: 'luxery', password: 'JohnnyIsAmazing67' },
+    { username: 'quandale', password: 'Quandale382', fullname: 'Quandale Brown' },
+    { username: 'jordan-k', password: 'Jordan921', fullname: 'Jordan Karlman' },
+    { username: 'saylor', password: 'Saylor576', fullname: 'Saylor Stroke' },
+    { username: 'nico', password: 'Nico193', fullname: 'Nico Asher' },
+    { username: 'rosalynn', password: 'Rosalynn651', fullname: 'Rosalynn Moniker' },
+    { username: 'jordan-t', password: 'Jordan841', fullname: 'Jordan Teller' },
+    { username: 'dan', password: 'Dan504', fullname: 'Dan King' },
+    { username: 'johnny', password: 'Johnny905', fullname: 'Johnny Jackson Jones' },
+    { username: 'tobias', password: 'Tobias739', fullname: 'Tobias Nobel' },
+    { username: 'cynthia', password: 'Cynthia312', fullname: 'Cynthia Jones' },
+    { username: 'tyler', password: 'Tyler778', fullname: 'Tyler Omo' },
+    { username: 'rumi', password: 'Rumi264', fullname: 'Rumi Valentine' },
+    { username: 'luxery', password: 'JohnnyIsAmazing67', fullname: 'Luxery Autos' },
 ];
 
 const rosterCredentials = roster.reduce((map, member) => {
@@ -713,10 +713,11 @@ function openSellModal() {
     const sellModal = document.getElementById('sell-modal');
     const confirmation = document.getElementById('sell-confirmation');
 
-    // Auto-fill salesperson with the logged-in username
+    // Auto-fill salesperson with the logged-in user's full name
     const salespersonEl = document.getElementById('sell-salesperson');
     if (salespersonEl) {
-        salespersonEl.value = currentUser || '';
+        const currentMember = roster.find(m => m.username.toLowerCase() === (currentUser || '').toLowerCase());
+        salespersonEl.value = currentMember ? currentMember.fullname : (currentUser || '');
     }
 
     // Clear the other fields
