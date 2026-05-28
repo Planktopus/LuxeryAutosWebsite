@@ -713,7 +713,14 @@ function openSellModal() {
     const sellModal = document.getElementById('sell-modal');
     const confirmation = document.getElementById('sell-confirmation');
 
-    ['sell-salesperson', 'sell-customer', 'sell-id', 'sell-plate'].forEach(id => {
+    // Auto-fill salesperson with the logged-in username
+    const salespersonEl = document.getElementById('sell-salesperson');
+    if (salespersonEl) {
+        salespersonEl.value = currentUser || '';
+    }
+
+    // Clear the other fields
+    ['sell-customer', 'sell-id', 'sell-plate'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
