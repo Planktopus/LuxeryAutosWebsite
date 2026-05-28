@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luxury Autos - Premium Vehicle Dealership</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="brand-title">Luxury Autos</h1>
+            <p class="tagline">Exclusive Vehicles for the Discerning Collector</p>
+        </div>
+    </section>
+
+    <!-- Team Roster Section -->
+    <section class="roster-section">
+        <div class="inventory-container">
+            <h2 class="inventory-title">Team Roster</h2>
+            <div id="roster-grid" class="roster-grid"></div>
+        </div>
+    </section>
+
+    <!-- Vehicle Inventory Section -->
+    <section class="inventory-section">
+        <div class="inventory-container">
+            <h2 class="inventory-title">Vehicle Inventory</h2>
+            <div class="inventory-search">
+                <input id="search-input" type="text" placeholder="Search cars by name..." autocomplete="off">
+            </div>
+            <div id="inventory-grid">
+                <!-- Category sections are dynamically populated here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-name">Login Required</h2>
+            <form id="login-form" class="sell-form">
+                <div class="form-row">
+                    <label for="login-username">Username</label>
+                    <input id="login-username" type="text" placeholder="Enter username" autocomplete="username" required>
+                </div>
+                <div class="form-row">
+                    <label for="login-password">Password</label>
+                    <input id="login-password" type="password" placeholder="Enter password" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="sell-submit">Log In</button>
+                <div id="login-error" class="sell-confirmation"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Vehicle Detail Modal -->
+    <div id="vehicle-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <img id="modal-image" class="modal-image" src="" alt="Vehicle">
+            <div class="modal-info">
+                <h2 id="modal-name" class="modal-name"></h2>
+                <div class="modal-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Original Price:</span>
+                        <span id="modal-price" class="detail-value"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Apply Discount:</span>
+                        <select id="modal-discount-select" class="discount-select">
+                            <option value="0">0%</option>
+                            <option value="1">1%</option>
+                            <option value="2">2%</option>
+                            <option value="3">3%</option>
+                            <option value="4">4%</option>
+                            <option value="5">5%</option>
+                        </select>
+                    </div>
+                    <div class="detail-row" id="discount-row" style="display: none;">
+                        <span class="detail-label">Discount Applied:</span>
+                        <span id="modal-discount" class="detail-value"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Final Price:</span>
+                        <span id="modal-final-price" class="detail-value price-highlight"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Class:</span>
+                        <span id="modal-class" class="detail-value class-badge"></span>
+                    </div>
+                    <div class="detail-row sell-action-row">
+                        <button id="sell-car-button" class="sell-button">Sell Car</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sell Car Form Modal -->
+    <div id="sell-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn sell-close">&times;</span>
+            <h2 class="modal-name">Sell Car</h2>
+            <form id="sell-form" class="sell-form">
+                <div class="form-row">
+                    <label for="sell-salesperson">Salesperson:</label>
+                    <input id="sell-salesperson" type="text" placeholder="Salesperson name" required>
+                </div>
+                <div class="form-row">
+                    <label for="sell-customer">Customer Name:</label>
+                    <input id="sell-customer" type="text" placeholder="Customer name" required>
+                </div>
+                <div class="form-row">
+                    <label for="sell-id">ID Number:</label>
+                    <input id="sell-id" type="text" placeholder="Ex. JRL26702" required>
+                </div>
+                <div class="form-row">
+                    <label for="sell-plate">License Plate:</label>
+                    <input id="sell-plate" type="text" placeholder="License plate" required>
+                </div>
+                <button type="submit" class="sell-submit">Confirm Sale</button>
+                <div id="sell-confirmation" class="sell-confirmation" aria-live="polite"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
