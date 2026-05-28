@@ -828,3 +828,5 @@ function closeModal() {
     const modal = document.getElementById('vehicle-modal');
     modal.classList.remove('active');
 }
+
+//test
