@@ -562,24 +562,17 @@ function loadAndRender() {
         });
     }
 
-    fetch('sales-log.txt')
-        .then(response => {
-            if (!response.ok) throw new Error('no legacy file');
-            return response.text();
-        })
-        .then(text => {
-            if (text.trim() && status) {
-                status.textContent = 'Legacy sales-log.txt loaded. Recent sales shown below.';
-                status.style.color = '#d4af37';
-                status.style.display = 'block';
-            }
-        })
-        .catch(() => {
-            if (status) {
-                status.textContent = 'Unable to read sales-log.txt. Showing local sales history only.';
-                status.style.display = 'block';
-            }
-        });
+// Inside loadAndRender() in sales-log.js, replace the fetch block:
+fetch('sales-log.txt?t=' + new Date().getTime()) // '?t=' adds a timestamp to prevent caching
+    .then(response => {
+        if (!response.ok) throw new Error('Could not load log');
+        return response.text();
+    })
+    .then(text => {
+        // Update your UI with the 'text' variable
+        console.log("Log content:", text);
+    })
+    .catch(err => console.error(err));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
