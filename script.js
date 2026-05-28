@@ -593,6 +593,18 @@ function persistSaleLog(entry) {
         const separator = rawText.trim() ? '\n\n----\n\n' : '';
         localStorage.setItem('salesLogText', rawText + separator + (record.rawText || ''));
     }
+
+    // Send to server to persist on all devices
+    if (record.rawText) {
+        fetch('/save-sale', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ data: record.rawText })
+        })
+        .catch(error => console.error('Error saving to server:', error));
+    }
 }
 
 function createVehicleCard(vehicle) {

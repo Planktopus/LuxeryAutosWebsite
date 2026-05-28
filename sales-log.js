@@ -531,48 +531,82 @@ function loadAndRender() {
     const clearFilter = document.getElementById('clear-filter-button');
     const downloadButton = document.getElementById('download-log-button');
 
-    const logs = loadLogs();
-    allSalesLogs = logs;
+    // Fetch data from server
+    fetch('/api/sales?t=' + new Date().getTime()) // '?t=' adds a timestamp to prevent caching
+        .then(response => {
+            if (!response.ok) throw new Error('Could not load sales from server');
+            return response.json();
+        })
+        .then(data => {
+            const serverSalesText = data.sales || '';
+            
+            // Parse server logs
+            let serverLogs = [];
+            if (serverSalesText.trim()) {
+                const chunks = serverSalesText.split(/\n-{4,}\n/).map(chunk => chunk.trim()).filter(Boolean);
+                serverLogs = chunks.map(normalizeLogEntry).filter(Boolean);
+            }
+            
+            // Get local logs from localStorage
+            const localLogs = loadStoredLogs() || [];
+            
+            // Merge: server logs take precedence (they're the source of truth)
+            const existingKeys = new Set(serverLogs.map(getLogKey));
+            const mergedLogs = [...serverLogs];
+            
+            // Add any local-only logs that aren't on the server
+            localLogs.forEach(entry => {
+                const key = getLogKey(entry);
+                if (!existingKeys.has(key)) {
+                    mergedLogs.push(entry);
+                }
+            });
+            
+            const logs = mergedLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+            allSalesLogs = logs;
 
-    renderEditableLogSection(logs);
-    initializeEditableLogControls();
-    renderPage(logs, filterInput?.value || '');
+            renderEditableLogSection(logs);
+            initializeEditableLogControls();
+            renderPage(logs, filterInput?.value || '');
 
-    if (filterInput) {
-        filterInput.addEventListener('input', () => renderPage(logs, filterInput.value));
-    }
+            if (filterInput) {
+                filterInput.addEventListener('input', () => renderPage(logs, filterInput.value));
+            }
 
-    if (clearFilter) {
-        clearFilter.addEventListener('click', () => {
-            if (filterInput) filterInput.value = '';
-            renderPage(logs, '');
+            if (clearFilter) {
+                clearFilter.addEventListener('click', () => {
+                    if (filterInput) filterInput.value = '';
+                    renderPage(logs, '');
+                });
+            }
+
+            if (downloadButton) {
+                downloadButton.addEventListener('click', () => {
+                    const payload = generateLogText(logs) || 'No sales recorded yet.';
+                    const blob = new Blob([payload], { type: 'text/plain' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'sales-log.txt';
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                });
+            }
+        })
+        .catch(err => {
+            console.error('Error loading from server:', err);
+            // Fallback to local logs only
+            const logs = loadLogs();
+            allSalesLogs = logs;
+
+            renderEditableLogSection(logs);
+            initializeEditableLogControls();
+            renderPage(logs, filterInput?.value || '');
+
+            if (status) {
+                status.textContent = 'Warning: Could not connect to server. Showing local data only.';
+                status.style.display = 'block';
+            }
         });
-    }
-
-    if (downloadButton) {
-        downloadButton.addEventListener('click', () => {
-            const savedText = localStorage.getItem('salesLogText');
-            const payload = savedText || generateLogText(logs) || 'No sales recorded yet.';
-            const blob = new Blob([payload], { type: 'text/plain' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'sales-log.txt';
-            link.click();
-            URL.revokeObjectURL(link.href);
-        });
-    }
-
-// Inside loadAndRender() in sales-log.js, replace the fetch block:
-fetch('sales-log.txt?t=' + new Date().getTime()) // '?t=' adds a timestamp to prevent caching
-    .then(response => {
-        if (!response.ok) throw new Error('Could not load log');
-        return response.text();
-    })
-    .then(text => {
-        // Update your UI with the 'text' variable
-        console.log("Log content:", text);
-    })
-    .catch(err => console.error(err));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
