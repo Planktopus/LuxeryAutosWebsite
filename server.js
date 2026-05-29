@@ -94,4 +94,73 @@ app.get("/api/sales", async (req, res) => {
   }
 });
 
+// Test Drives Database Bin
+const TEST_DRIVES_BIN_ID = "6a1971ea21f9ee59d299359e";
+
+// Endpoint to save a new test drive
+app.post("/save-test-drive", async (req, res) => {
+  try {
+    // 1. Fetch current test drives
+    const getResponse = await fetch(
+      `https://api.jsonbin.io/v3/b/${TEST_DRIVES_BIN_ID}/latest`,
+      {
+        headers: {
+          "X-Master-Key": MASTER_KEY,
+          "X-Bin-Meta": "false",
+        },
+      },
+    );
+
+    const currentData = await getResponse.json();
+    let testDrives = Array.isArray(currentData) ? currentData : [];
+
+    // 2. Add the new test drive
+    testDrives.push(req.body);
+
+    // 3. Update the Bin
+    const putResponse = await fetch(
+      `https://api.jsonbin.io/v3/b/${TEST_DRIVES_BIN_ID}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Master-Key": MASTER_KEY,
+        },
+        body: JSON.stringify(testDrives),
+      },
+    );
+
+    if (!putResponse.ok) {
+      throw new Error(`JSONBin update failed: ${putResponse.statusText}`);
+    }
+
+    res.send({ success: true });
+  } catch (err) {
+    console.error("Error saving test drive:", err);
+    res.status(500).send("Error saving test drive");
+  }
+});
+
+// Endpoint to get all test drives
+app.get("/api/test-drives", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://api.jsonbin.io/v3/b/${TEST_DRIVES_BIN_ID}/latest`,
+      {
+        headers: {
+          "X-Master-Key": MASTER_KEY,
+          "X-Bin-Meta": "false",
+        },
+      },
+    );
+    const records = await response.json();
+
+    // Send the raw array directly so test-drive.js can map and filter it
+    res.json(Array.isArray(records) ? records : []);
+  } catch (err) {
+    console.error("Error fetching test drives:", err);
+    res.status(500).send("Error fetching test drives");
+  }
+});
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
