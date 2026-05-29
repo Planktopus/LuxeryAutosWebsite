@@ -616,10 +616,6 @@ function loadAndRender() {
       const logs = serverLogs.sort(
         (a, b) => new Date(b.date) - new Date(a.date),
       );
-
-      const logs = mergedLogs.sort(
-        (a, b) => new Date(b.date) - new Date(a.date),
-      );
       allSalesLogs = logs;
 
       renderEditableLogSection(logs);
