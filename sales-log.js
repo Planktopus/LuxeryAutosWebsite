@@ -564,39 +564,63 @@ function loadAndRender() {
   const clearFilter = document.getElementById("clear-filter-button");
   const downloadButton = document.getElementById("download-log-button");
 
-  // Fetch data van de server (met timestamp tegen caching)
+  // Fetch raw logs array directly from the server
   fetch("/api/sales?t=" + new Date().getTime())
     .then((response) => {
       if (!response.ok) throw new Error("Could not load sales from server");
       return response.json();
     })
     .then((data) => {
-      // DE CRUCIALE FIX: De server geeft nu direct de array terug via res.json(data)
-      // in plaats van de oude { sales: salesText } string structuur.
       let serverLogs = [];
 
       if (Array.isArray(data)) {
-        // Map de server-properties naar de interne camelCase variabelen van de frontend
-        serverLogs = data.map((item) => ({
-          date: item.date,
-          salesperson: item.salesperson,
-          customer: item.customer,
-          idNumber: item.id_number, // database heeft id_number, frontend gebruikt idNumber
-          vehicle: item.vehicle,
-          sellPrice: Number(item.sell_price?.replace(/[^0-9.-]+/g, "")) || 0,
-          discountPercent: Number(item.discount?.replace("%", "")) || 0,
-          licensePlate: item.license_plate,
-          rawText: `Date: ${item.date}\nSalesperson: ${item.salesperson}\nVehicle: ${item.vehicle}`,
-        }));
+        serverLogs = data
+          .map((item) => {
+            if (!item) return null;
+
+            // Automatically generate rawText in the classic multi-line key-value format
+            // so that the admin editor doesn't break when clicked.
+            const formattedRawText = [
+              `Date: ${item.date || ""}`,
+              `Salesperson: ${item.salesperson || ""}`,
+              `Customer name: ${item.customer || ""}`,
+              `ID Number: ${item.id_number || ""}`,
+              `Vehicle Sold: ${item.vehicle || ""}`,
+              `Sell price: ${typeof item.sell_price === "number" ? formatCurrency(item.sell_price) : item.sell_price || ""}`,
+              `Discount given: ${typeof item.discount === "number" ? item.discount + "%" : item.discount || "0%"}`,
+              `License plate: ${item.license_plate || ""}`,
+            ].join("\n");
+
+            return {
+              date: item.date || new Date().toISOString(),
+              salesperson: item.salesperson || "",
+              customer: item.customer || "",
+              idNumber: item.id_number || "",
+              vehicle: item.vehicle || "",
+              // Normalize back to numbers for calculations (Leaderboard, Summary)
+              sellPrice:
+                typeof item.sell_price === "number"
+                  ? item.sell_price
+                  : Number(item.sell_price?.replace(/[^0-9.-]+/g, "")) || 0,
+              discountPercent:
+                typeof item.discount === "number"
+                  ? item.discount
+                  : Number(item.discount?.replace("%", "")) || 0,
+              licensePlate: item.license_plate || "",
+              rawText: formattedRawText,
+            };
+          })
+          .filter(Boolean);
       }
 
-      // Haal lokale nood-logs op uit localStorage
+      // Get local fallback logs from localStorage
       const localLogs = loadStoredLogs() || [];
 
-      // Samenvoegen op basis van unieke sleutels
+      // Merge: Server logs take precedence (source of truth)
       const existingKeys = new Set(serverLogs.map(getLogKey));
       const mergedLogs = [...serverLogs];
 
+      // Add any local logs that aren't synced on the server
       localLogs.forEach((entry) => {
         const key = getLogKey(entry);
         if (!existingKeys.has(key)) {
@@ -640,6 +664,7 @@ function loadAndRender() {
     })
     .catch((err) => {
       console.error("Error loading from server:", err);
+      // Fallback to local logs only
       const logs = loadLogs();
       allSalesLogs = logs;
 
@@ -654,3 +679,9 @@ function loadAndRender() {
       }
     });
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  currentUser = "";
+  setupSalesLogin();
+  showSalesLoginModal();
+});

@@ -72,7 +72,7 @@ app.get("/get-sales", async (req, res) => {
   }
 });
 
-// Endpoint for the sales log page (returns formatted text logs)
+// Endpoint for the sales log page (returns the raw array directly to be mapped on the frontend)
 app.get("/api/sales", async (req, res) => {
   try {
     const response = await fetch(
@@ -86,30 +86,10 @@ app.get("/api/sales", async (req, res) => {
     );
     const records = await response.json();
 
-    let salesText = "";
-
-    if (Array.isArray(records) && records.length > 0) {
-      salesText = records
-        .map((item) => {
-          if (!item) return "";
-
-          // Formats your clean JSON object properties into a readable text block
-          return `Date: ${item.date || "N/A"}
-Salesperson: ${item.salesperson || "Unknown"}
-Customer: ${item.customer || "Unknown"} (ID: ${item.id_number || "N/A"})
-Vehicle: ${item.vehicle || "Unknown"}
-Price: ${item.sell_price || "$0"} (Discount: ${item.discount || "0%"})
-Plate: ${item.license_plate || "N/A"}`;
-        })
-        .filter(Boolean)
-        .join("\n\n--------------------\n\n");
-    } else {
-      salesText = "No sales records found or database is empty.";
-    }
-
-    res.json({ sales: salesText });
+    // Send the raw array directly so sales-log.js can map and filter it
+    res.json(Array.isArray(records) ? records : []);
   } catch (err) {
-    console.error("Error generating sales log:", err);
+    console.error("Error fetching server sales:", err);
     res.status(500).send("Error fetching server sales");
   }
 });
