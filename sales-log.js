@@ -613,20 +613,9 @@ function loadAndRender() {
           .filter(Boolean);
       }
 
-      // Get local fallback logs from localStorage
-      const localLogs = loadStoredLogs() || [];
-
-      // Merge: Server logs take precedence (source of truth)
-      const existingKeys = new Set(serverLogs.map(getLogKey));
-      const mergedLogs = [...serverLogs];
-
-      // Add any local logs that aren't synced on the server
-      localLogs.forEach((entry) => {
-        const key = getLogKey(entry);
-        if (!existingKeys.has(key)) {
-          mergedLogs.push(entry);
-        }
-      });
+      const logs = serverLogs.sort(
+        (a, b) => new Date(b.date) - new Date(a.date),
+      );
 
       const logs = mergedLogs.sort(
         (a, b) => new Date(b.date) - new Date(a.date),
