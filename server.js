@@ -94,6 +94,38 @@ app.get("/api/sales", async (req, res) => {
   }
 });
 
+// Endpoint to replace the full sales log in the database
+app.put("/save-sales-log", async (req, res) => {
+  try {
+    const records = req.body;
+    if (!Array.isArray(records)) {
+      return res
+        .status(400)
+        .json({ error: "Expected an array of sales records" });
+    }
+
+    const putResponse = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": MASTER_KEY,
+      },
+      body: JSON.stringify(records),
+    });
+
+    if (!putResponse.ok) {
+      throw new Error(`JSONBin update failed: ${putResponse.statusText}`);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error saving sales log:", err);
+    res
+      .status(500)
+      .json({ error: "Error saving sales log", details: err.message });
+  }
+});
+
 // Test Drives Database Bin
 const TEST_DRIVES_BIN_ID = "6a1971ea21f9ee59d299359e";
 

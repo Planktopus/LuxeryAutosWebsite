@@ -193,6 +193,44 @@ function formatCurrency(value) {
   }).format(value);
 }
 
+function parseSalesLogTextToEntries(text) {
+  if (!text || typeof text !== "string") return [];
+  const chunks = text
+    .split(/\n-{4,}\n/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  return chunks
+    .map((chunk) => normalizeLogEntry(chunk))
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+async function saveSalesLogEntriesToServer(logText) {
+  const records = parseSalesLogTextToEntries(logText);
+  if (!records.length) {
+    throw new Error("No valid sales records found to save.");
+  }
+
+  const response = await fetch("/save-sales-log", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(records),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to save sales log: ${response.status} ${errorText}`,
+    );
+  }
+
+  localStorage.setItem("salesLogText", logText);
+  return true;
+}
+
 function loadStoredLogs() {
   const rawLogs = JSON.parse(localStorage.getItem("salesLogs") || "[]");
   return rawLogs
@@ -473,7 +511,7 @@ function initializeEditableLogControls() {
   const status = document.getElementById("log-save-status");
 
   if (toggleButton) {
-    toggleButton.addEventListener("click", () => {
+    toggleButton.addEventListener("click", async () => {
       const editor = document.getElementById("sales-log-editor");
       if (!salesLogEditMode) {
         setLogEditMode(true);
@@ -490,10 +528,26 @@ function initializeEditableLogControls() {
           localStorage.setItem("salesLogText", editor.value);
         }
       }
+
+      const fullLogText =
+        localStorage.getItem("salesLogText") || editor?.value || "";
+      let saveMessage = "Sales log updated locally.";
+      if (editor) {
+        try {
+          await saveSalesLogEntriesToServer(fullLogText);
+          saveMessage = "Sales log updated and saved to DB.";
+        } catch (saveErr) {
+          console.warn(saveErr);
+          saveMessage = "Saved locally, but DB save failed.";
+        }
+      }
+
       setLogEditMode(false);
       if (status) {
-        status.textContent = "Sales log updated locally.";
-        status.style.color = "#d4af37";
+        status.textContent = saveMessage;
+        status.style.color = saveMessage.includes("failed")
+          ? "#ff6b6b"
+          : "#d4af37";
       }
       const filterInput = document.getElementById("sales-log-filter");
       const refreshedLogs = loadLogs();
@@ -504,7 +558,7 @@ function initializeEditableLogControls() {
   }
 
   if (doneButton) {
-    doneButton.addEventListener("click", () => {
+    doneButton.addEventListener("click", async () => {
       const editor = document.getElementById("sales-log-editor");
       const logs = loadLogs();
       if (editor) {
@@ -515,10 +569,26 @@ function initializeEditableLogControls() {
           localStorage.setItem("salesLogText", editor.value);
         }
       }
+
+      const fullLogText =
+        localStorage.getItem("salesLogText") || editor?.value || "";
+      let saveMessage = "Sales log updated locally.";
+      if (editor) {
+        try {
+          await saveSalesLogEntriesToServer(fullLogText);
+          saveMessage = "Sales log updated and saved to DB.";
+        } catch (saveErr) {
+          console.warn(saveErr);
+          saveMessage = "Saved locally, but DB save failed.";
+        }
+      }
+
       setLogEditMode(false);
       if (status) {
-        status.textContent = "Sales log updated locally.";
-        status.style.color = "#d4af37";
+        status.textContent = saveMessage;
+        status.style.color = saveMessage.includes("failed")
+          ? "#ff6b6b"
+          : "#d4af37";
       }
       const filterInput = document.getElementById("sales-log-filter");
       const refreshedLogs = loadLogs();
