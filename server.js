@@ -1,52 +1,98 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const express = require("express");
 const app = express();
-
-// Render sets the PORT variable automatically
 const PORT = process.env.PORT || 3000;
-const SALES_LOG_FILE = 'sales-log.txt';
+
+// Use your Master Key from Render's Environment Variables
+const MASTER_KEY = process.env.JSONBIN_KEY;
+const BIN_ID = "6a194908ddf5aa59f77347c2"; // Your Bin ID
 
 app.use(express.json());
-app.use(express.static('.')); // Serve files from the root
+app.use(express.static("."));
 
-// Endpoint to save a sale
-app.post('/save-sale', (req, res) => {
-    const data = req.body.data;
-    
-    if (!data) {
-        return res.status(400).json({ error: 'No data provided' });
-    }
+// Endpoint to save a new sale
+app.post("/save-sale", async (req, res) => {
+  try {
+    // 1. Fetch current data
+    const getResponse = await fetch(
+      `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
+      {
+        headers: { "X-Master-Key": MASTER_KEY },
+      },
+    );
+    const currentData = await getResponse.json();
 
-    // Append to sales-log.txt with separator
-    const separator = '\n----\n';
-    fs.appendFile(SALES_LOG_FILE, data + separator, (err) => {
-        if (err) {
-            console.error('Error saving sale:', err);
-            return res.status(500).json({ error: 'Failed to save sale' });
-        }
-        res.json({ success: true, message: 'Sale saved successfully' });
+    // Ensure sales is an array
+    let sales = Array.isArray(currentData.record) ? currentData.record : [];
+
+    // 2. Add the new sale
+    sales.push(req.body);
+
+    // 3. Update the Bin
+    await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": MASTER_KEY,
+      },
+      body: JSON.stringify(sales),
     });
+
+    res.send({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error saving data");
+  }
 });
 
 // Endpoint to get all sales
-app.get('/api/sales', (req, res) => {
-    fs.readFile(SALES_LOG_FILE, 'utf8', (err, data) => {
-        if (err) {
-            // File doesn't exist yet - return empty
-            if (err.code === 'ENOENT') {
-                return res.json({ sales: '' });
-            }
-            console.error('Error reading sales log:', err);
-            return res.status(500).json({ error: 'Failed to read sales log' });
-        }
-        res.json({ sales: data });
-    });
+app.get("/get-sales", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
+      {
+        headers: { "X-Master-Key": MASTER_KEY },
+      },
+    );
+    const data = await response.json();
+    res.json(data.record);
+  } catch (err) {
+    res.status(500).send("Error fetching data");
+  }
 });
 
-// Legacy endpoint for backward compatibility
-app.get('/sales-log.txt', (req, res) => {
-    res.sendFile(path.join(__dirname, SALES_LOG_FILE));
+// Endpoint for the sales log page
+app.get("/api/sales", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
+      {
+        headers: { "X-Master-Key": MASTER_KEY },
+      },
+    );
+    const data = await response.json();
+    const record = data.record;
+
+    let salesText = "";
+    if (Array.isArray(record)) {
+      salesText = record
+        .map((item) => {
+          if (!item) return "";
+          if (typeof item === "string") return item;
+          if (typeof item.data === "string") return item.data;
+          return JSON.stringify(item);
+        })
+        .filter(Boolean)
+        .join("\n\n----\n\n");
+    } else if (typeof record === "string") {
+      salesText = record;
+    } else if (record && typeof record.data === "string") {
+      salesText = record.data;
+    }
+
+    res.json({ sales: salesText });
+  } catch (err) {
+    res.status(500).send("Error fetching server sales");
+  }
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
