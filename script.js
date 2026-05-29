@@ -1379,7 +1379,7 @@ const categories = [
 const roster = [
   { username: "quandale", password: "Quandale382", fullname: "Quandale Brown" },
   { username: "jordan-k", password: "Jordan921", fullname: "Jordan Karlman" },
-  { username: "saylor", password: "Saylor576", fullname: "Saylor Stroke" },
+  { username: "headphanie", password: "Headphanie", fullname: "Headphanie Stroke" },
   { username: "nico", password: "Nico193", fullname: "Nico Asher" },
   {
     username: "rosalynn",
