@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luxury Autos — Test Drive Log</title>
+    <!-- Add matching style links (e.g., style.css) -->
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* Embed layout adjustments inside document header */
+      .test-drive-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 20px;
+      }
+      .td-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+      }
+      .td-card {
+        background-color: #1e1e1e;
+        border: 1px solid #2d2d2d;
+        border-radius: 8px;
+        padding: 20px;
+        position: relative;
+        transition:
+          transform 0.2s,
+          border-color 0.2s;
+      }
+      .td-card:hover {
+        border-color: #d4af37;
+        transform: translateY(-2px);
+      }
+      .td-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #2d2d2d;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+      }
+      .td-vehicle-title {
+        color: #d4af37;
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+      .td-date {
+        color: #888;
+        font-size: 0.85rem;
+      }
+      .td-row {
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+      }
+      .td-row span {
+        color: #888;
+        font-weight: 500;
+      }
+      .td-badge {
+        display: inline-block;
+        background-color: rgba(212, 175, 55, 0.1);
+        color: #d4af37;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        margin-top: 10px;
+      }
+      .dashboard-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 40px;
+      }
+      @media (max-width: 900px) {
+        .dashboard-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .search-clear-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .search-clear-container input {
+        flex-grow: 1;
+        padding: 12px;
+        background-color: #1a1a1a;
+        border: 1px solid #333;
+        color: #fff;
+        border-radius: 6px;
+        font-size: 1rem;
+      }
+      .search-clear-container button {
+        background-color: #d4af37;
+        color: #000;
+        border: none;
+        padding: 0 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: opacity 0.2s;
+      }
+      .search-clear-container button:hover {
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body class="dark-theme">
+    <!-- Header Navigation Section -->
+    <header class="main-header">
+      <div class="header-container">
+        <h1
+          class="logo"
+          onclick="window.location.href = 'index.html'"
+          style="cursor: pointer"
+        >
+          LUXURY <span>AUTOS</span>
+        </h1>
+        <nav class="nav-menu">
+          <a href="index.html">Inventory</a>
+          <a href="sales-log.html" id="sales-log-nav">Sales Log</a>
+          <a href="test-drive.html" class="active">Test Drives</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="test-drive-container">
+      <!-- Dashboard Summary Indicators -->
+      <div class="td-summary-grid">
+        <div class="metric-card">
+          <h3>Total Test Drives</h3>
+          <div class="metric-value" id="summary-td-count">0</div>
+        </div>
+        <div class="metric-card">
+          <h3>Income Generated</h3>
+          <div class="metric-value" id="summary-td-income">$0</div>
+        </div>
+        <div class="metric-card">
+          <h3>Unique Vehicles Driven</h3>
+          <div class="metric-value" id="summary-td-vehicles">0</div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard View -->
+      <div class="dashboard-layout">
+        <!-- Left Side: Logs List -->
+        <div>
+          <h2 class="section-title">Test Drive Entries</h2>
+
+          <div class="search-clear-container">
+            <input
+              type="text"
+              id="td-filter-input"
+              placeholder="Search by vehicle or salesperson..."
+            />
+            <button id="td-clear-filter">Clear</button>
+          </div>
+
+          <div
+            id="td-logs-list"
+            class="sales-log-list"
+            style="display: grid; grid-template-columns: 1fr; gap: 20px"
+          >
+            <!-- Test Drive entries will be rendered here dynamically -->
+          </div>
+        </div>
+
+        <!-- Right Side: Leaderboard panel -->
+        <div>
+          <h2 class="section-title">Top Test Drivers</h2>
+          <div id="td-leaderboard" class="leaderboard">
+            <!-- Leaderboard will render here dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Protected Access Security Modal -->
+    <div id="sales-login-modal" class="modal">
+      <div class="modal-content" style="max-width: 400px; text-align: center">
+        <h2 class="modal-title">Admin Authentication</h2>
+        <p style="color: #888; margin-bottom: 20px">
+          Enter credentials to view the Test Drive Logs.
+        </p>
+        <form id="sales-login-form">
+          <div class="form-group">
+            <label for="sales-login-username">Username</label>
+            <input
+              type="text"
+              id="sales-login-username"
+              required
+              style="width: 100%; box-sizing: border-box"
+            />
+          </div>
+          <div class="form-group" style="margin-top: 15px">
+            <label for="sales-login-password">Password</label>
+            <input
+              type="password"
+              id="sales-login-password"
+              required
+              style="width: 100%; box-sizing: border-box"
+            />
+          </div>
+          <div
+            id="sales-login-error"
+            style="margin-top: 15px; font-weight: 500; font-size: 0.9rem"
+          ></div>
+          <button
+            type="submit"
+            class="submit-btn"
+            style="margin-top: 20px; width: 100%"
+          >
+            Authenticate
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Script assets -->
+    <script src="test-drive.js"></script>
+  </body>
+</html>

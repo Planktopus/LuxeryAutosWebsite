@@ -943,3 +943,64 @@ body {
     font-size: 1rem;
   }
 }
+
+/* ==================== TEST DRIVE UPDATES ==================== */
+
+/* Main modal 'Test Drive' button style */
+.test-drive-button {
+  background-color: transparent;
+  color: #d4af37;
+  border: 2px solid #d4af37;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-left: 10px; /* Spacing next to Sell button */
+  outline: none;
+}
+
+.test-drive-button:hover {
+  background-color: #d4af37;
+  color: #000;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+.test-drive-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: #888;
+  color: #888;
+}
+
+/* Header Admin button group alignment */
+.admin-btn-group {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.test-drive-nav-btn {
+  background-color: #1c1c1c !important;
+  border: 2px solid #d4af37 !important;
+  color: #d4af37 !important;
+}
+
+.test-drive-nav-btn:hover {
+  background-color: #d4af37 !important;
+  color: #000 !important;
+}
+
+@media (max-width: 600px) {
+  .test-drive-button {
+    margin-left: 0;
+    margin-top: 10px;
+    width: 100%;
+  }
+  .admin-btn-group {
+    flex-direction: column;
+    align-items: center;
+  }
+}

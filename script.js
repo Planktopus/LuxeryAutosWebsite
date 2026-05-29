@@ -1041,9 +1041,9 @@ const categories = [
           {
             name: "Benefactor Harmann",
             image: "pictures/NoCarPictureYet.png",
-            price: 405000,
+            price: 405005,
             discount: 0,
-            finalPrice: 405000,
+            finalPrice: 405005,
             handling: 0,
             class: "A",
           },
@@ -1474,12 +1474,10 @@ function displayCategories(searchTerm = "") {
   }
 
   filteredCategories.forEach((category) => {
-    // Section wrapper
     const section = document.createElement("div");
     section.className = "category-section";
     section.id = `category-${category.id}`;
 
-    // Section header
     const header = document.createElement("div");
     header.className = "category-header";
     header.innerHTML = `<h3 class="category-title">${category.label}</h3>`;
@@ -1543,15 +1541,28 @@ function renderAdminButton() {
   const heroContent = document.querySelector(".hero-content");
   if (!heroContent) return;
 
-  const button = document.createElement("button");
-  button.id = "admin-log-button";
-  button.className = "admin-log-button";
-  button.textContent = "Sales Log";
-  button.addEventListener("click", () => {
+  // Create wrapper for the admin dashboard buttons
+  const btnGroup = document.createElement("div");
+  btnGroup.id = "admin-log-button";
+  btnGroup.className = "admin-btn-group";
+
+  const salesBtn = document.createElement("button");
+  salesBtn.className = "admin-log-button";
+  salesBtn.textContent = "Sales Log";
+  salesBtn.addEventListener("click", () => {
     window.location.href = "sales-log.html";
   });
 
-  heroContent.appendChild(button);
+  const testDriveBtn = document.createElement("button");
+  testDriveBtn.className = "admin-log-button test-drive-nav-btn";
+  testDriveBtn.textContent = "Test Drives Log";
+  testDriveBtn.addEventListener("click", () => {
+    window.location.href = "test-drive.html";
+  });
+
+  btnGroup.appendChild(salesBtn);
+  btnGroup.appendChild(testDriveBtn);
+  heroContent.appendChild(btnGroup);
 }
 
 function setupSearch() {
@@ -1637,7 +1648,7 @@ function closeLoginModal() {
 function persistSaleLog(entry) {
   const salesLogs = JSON.parse(localStorage.getItem("salesLogs") || "[]");
   const record = {
-    date: new Date().toLocaleString("en-GB"), // Zorgt voor de gewenste "DD/MM/YYYY, HH:MM:SS" indeling
+    date: new Date().toLocaleString("en-GB"),
     ...entry,
   };
   salesLogs.push(record);
@@ -1652,16 +1663,14 @@ function persistSaleLog(entry) {
     );
   }
 
-  // DE CRUCIALE FIX: Stuur een gestructureerd JSON object naar de backend,
-  // exact in de indeling die momenteel in de JSONBin database staat!
   const payload = {
     date: record.date,
     salesperson: record.salesperson,
     customer: record.customer,
-    id_number: record.idNumber, // Omgezet naar snake_case voor de database
+    id_number: record.idNumber,
     vehicle: record.vehicle,
-    sell_price: formatCurrency(record.sellPrice), // Inclusief het $-teken en de komma's zoals je datavoorbeeld
-    discount: record.discountPercent + "%", // Inclusief %-teken
+    sell_price: formatCurrency(record.sellPrice),
+    discount: record.discountPercent + "%",
     license_plate: record.licensePlate,
   };
 
@@ -1670,7 +1679,7 @@ function persistSaleLog(entry) {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload), // Verstuur de schone data-velden direct!
+    body: JSON.stringify(payload),
   })
     .then((response) => {
       if (!response.ok) throw new Error("Network response was not ok");
@@ -1782,7 +1791,76 @@ function openModal(vehicle) {
     updateModalDiscount(Number(discountSelect.value));
   }
 
+  // AUTOMATIC DYNAMIC INJECTION: Ensure "Test Drive" button exists next to the "Sell" button
+  const sellButton = document.getElementById("sell-car-button");
+  if (sellButton && !document.getElementById("test-drive-button")) {
+    const tdButton = document.createElement("button");
+    tdButton.id = "test-drive-button";
+    tdButton.className = "test-drive-button";
+    tdButton.textContent = "Test Drive ($500)";
+
+    // Insert directly after the sell-car-button
+    sellButton.parentNode.insertBefore(tdButton, sellButton.nextSibling);
+    tdButton.addEventListener("click", handleTestDriveSubmit);
+  }
+
   modal.classList.add("active");
+}
+
+function handleTestDriveSubmit() {
+  if (!activeVehicle) return;
+
+  // Get current logged-in salesperson's full name
+  const currentMember = roster.find(
+    (m) => m.username.toLowerCase() === (currentUser || "").toLowerCase(),
+  );
+  const salespersonName = currentMember
+    ? currentMember.fullname
+    : currentUser || "Unknown";
+
+  const payload = {
+    date: new Date().toLocaleString("en-GB"),
+    salesperson: salespersonName,
+    vehicle: activeVehicle.name,
+    price: 500,
+  };
+
+  const tdButton = document.getElementById("test-drive-button");
+  const originalText = tdButton.textContent;
+  tdButton.textContent = "Saving...";
+  tdButton.disabled = true;
+
+  fetch("/save-test-drive", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error("Failed to save test drive");
+      return response.json();
+    })
+    .then((data) => {
+      tdButton.textContent = "Logged! ✓";
+      tdButton.style.backgroundColor = "#2ecc71";
+      setTimeout(() => {
+        tdButton.textContent = originalText;
+        tdButton.style.backgroundColor = "";
+        tdButton.disabled = false;
+        closeModal();
+      }, 1200);
+    })
+    .catch((err) => {
+      console.error(err);
+      tdButton.textContent = "Failed ✗";
+      tdButton.style.backgroundColor = "#e74c3c";
+      setTimeout(() => {
+        tdButton.textContent = originalText;
+        tdButton.style.backgroundColor = "";
+        tdButton.disabled = false;
+      }, 2000);
+    });
 }
 
 function openSellModal() {
@@ -1790,7 +1868,6 @@ function openSellModal() {
   const sellModal = document.getElementById("sell-modal");
   const confirmation = document.getElementById("sell-confirmation");
 
-  // Auto-fill salesperson with the logged-in user's full name
   const salespersonEl = document.getElementById("sell-salesperson");
   if (salespersonEl) {
     const currentMember = roster.find(
@@ -1801,7 +1878,6 @@ function openSellModal() {
       : currentUser || "";
   }
 
-  // Clear the other fields
   ["sell-customer", "sell-id", "sell-plate"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = "";
@@ -1854,7 +1930,7 @@ function submitSellForm(event) {
 
   if (isInvalidLicensePlate(licensePlate)) {
     if (confirmation) {
-      confirmation.textContent = "Check vechile registration for plate";
+      confirmation.textContent = "Check vehicle registration for plate";
     }
     return;
   }
@@ -1932,5 +2008,3 @@ function closeModal() {
   const modal = document.getElementById("vehicle-modal");
   modal.classList.remove("active");
 }
-
-//test
