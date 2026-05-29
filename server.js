@@ -12,23 +12,27 @@ app.use(express.static("."));
 // Endpoint to save a new sale
 app.post("/save-sale", async (req, res) => {
   try {
-    // 1. Fetch current data
+    // 1. Fetch current data without the JSONBin metadata wrapper
     const getResponse = await fetch(
       `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
       {
-        headers: { "X-Master-Key": MASTER_KEY },
+        headers: {
+          "X-Master-Key": MASTER_KEY,
+          "X-Bin-Meta": "false",
+        },
       },
     );
+
     const currentData = await getResponse.json();
 
-    // Ensure sales is an array
-    let sales = Array.isArray(currentData.record) ? currentData.record : [];
+    // Since X-Bin-Meta is false, currentData is directly the array
+    let sales = Array.isArray(currentData) ? currentData : [];
 
-    // 2. Add the new sale
+    // 2. Add the new sale object (comes from your frontend form)
     sales.push(req.body);
 
-    // 3. Update the Bin
-    await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    // 3. Update the Bin with the updated clean array
+    const putResponse = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -37,60 +41,75 @@ app.post("/save-sale", async (req, res) => {
       body: JSON.stringify(sales),
     });
 
+    if (!putResponse.ok) {
+      throw new Error(`JSONBin update failed: ${putResponse.statusText}`);
+    }
+
     res.send({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error("Error saving sale:", err);
     res.status(500).send("Error saving data");
   }
 });
 
-// Endpoint to get all sales
+// Endpoint to get all raw sales (useful for frontend tables/charts)
 app.get("/get-sales", async (req, res) => {
   try {
     const response = await fetch(
       `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
       {
-        headers: { "X-Master-Key": MASTER_KEY },
+        headers: {
+          "X-Master-Key": MASTER_KEY,
+          "X-Bin-Meta": "false",
+        },
       },
     );
     const data = await response.json();
-    res.json(data.record);
+    res.json(data);
   } catch (err) {
+    console.error("Error fetching sales:", err);
     res.status(500).send("Error fetching data");
   }
 });
 
-// Endpoint for the sales log page
+// Endpoint for the sales log page (returns formatted text logs)
 app.get("/api/sales", async (req, res) => {
   try {
     const response = await fetch(
       `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
       {
-        headers: { "X-Master-Key": MASTER_KEY },
+        headers: {
+          "X-Master-Key": MASTER_KEY,
+          "X-Bin-Meta": "false",
+        },
       },
     );
-    const data = await response.json();
-    const record = data.record;
+    const records = await response.json();
 
     let salesText = "";
-    if (Array.isArray(record)) {
-      salesText = record
+
+    if (Array.isArray(records) && records.length > 0) {
+      salesText = records
         .map((item) => {
           if (!item) return "";
-          if (typeof item === "string") return item;
-          if (typeof item.data === "string") return item.data;
-          return JSON.stringify(item);
+
+          // Formats your clean JSON object properties into a readable text block
+          return `Date: ${item.date || "N/A"}
+Salesperson: ${item.salesperson || "Unknown"}
+Customer: ${item.customer || "Unknown"} (ID: ${item.id_number || "N/A"})
+Vehicle: ${item.vehicle || "Unknown"}
+Price: ${item.sell_price || "$0"} (Discount: ${item.discount || "0%"})
+Plate: ${item.license_plate || "N/A"}`;
         })
         .filter(Boolean)
-        .join("\n\n----\n\n");
-    } else if (typeof record === "string") {
-      salesText = record;
-    } else if (record && typeof record.data === "string") {
-      salesText = record.data;
+        .join("\n\n--------------------\n\n");
+    } else {
+      salesText = "No sales records found or database is empty.";
     }
 
     res.json({ sales: salesText });
   } catch (err) {
+    console.error("Error generating sales log:", err);
     res.status(500).send("Error fetching server sales");
   }
 });
