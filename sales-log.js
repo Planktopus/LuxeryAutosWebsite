@@ -212,7 +212,7 @@ function parseSalesLogTextToEntries(text) {
 
 function convertEntryToServerRecord(entry) {
   return {
-    date: entry.date || new Date().toISOString(),
+    date: entry.x || new Date().toISOString(),
     salesperson: entry.salesperson || "",
     customer: entry.customer || "",
     id_number: entry.idNumber || "",
