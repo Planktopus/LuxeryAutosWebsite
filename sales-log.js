@@ -232,7 +232,16 @@ async function saveSalesLogEntriesToServer(logText) {
   // 1. Map entries to use snake_case properties matching your backend database columns
   const payload = records.map(convertEntryToServerRecord);
 
-  const response = await fetch("/save-sales-log", {
+  function apiFetch(path, options) {
+    const isAbsolute = /^(https?:)?\/\//i.test(path);
+    if (isAbsolute) return fetch(path, options);
+    if (location.protocol === "file:") {
+      return fetch("http://localhost:3000" + path, options);
+    }
+    return fetch(path, options);
+  }
+
+  const response = await apiFetch("/save-sales-log", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -349,10 +358,7 @@ function renderSaleCards(logs) {
           item.rawText === entry.rawText &&
           item.salesperson === entry.salesperson,
       );
-      const editButton =
-        isAdmin && rawIndex >= 0
-          ? `<button class="sale-card-edit" data-index="${rawIndex}" title="Edit this entry">✏️</button>`
-          : "";
+      const editButton = "";
       return `
             <div class="sale-card">
                 ${editButton}
@@ -371,15 +377,7 @@ function renderSaleCards(logs) {
     })
     .join("");
 
-  if (isAdmin) {
-    document.querySelectorAll(".sale-card-edit").forEach((button) => {
-      button.addEventListener("click", () => {
-        const rawIndex = Number(button.dataset.index);
-        if (rawIndex < 0) return;
-        activateSaleEntryEdit(rawLogs[rawIndex], rawIndex, rawLogs);
-      });
-    });
-  }
+  // Admin edit UI removed: no edit buttons or handlers
 }
 
 function renderLeaderboard(logs) {
@@ -661,7 +659,16 @@ function loadAndRender() {
   const downloadButton = document.getElementById("download-log-button");
 
   // Fetch raw logs array directly from the server
-  fetch("/api/sales?t=" + new Date().getTime())
+  function apiFetch(path, options) {
+    const isAbsolute = /^(https?:)?\/\//i.test(path);
+    if (isAbsolute) return fetch(path, options);
+    if (location.protocol === "file:") {
+      return fetch("http://localhost:3000" + path, options);
+    }
+    return fetch(path, options);
+  }
+
+  apiFetch("/api/sales?t=" + new Date().getTime())
     .then((response) => {
       if (!response.ok) throw new Error("Could not load sales from server");
       return response.json();
@@ -722,8 +729,7 @@ function loadAndRender() {
       );
       allSalesLogs = logs;
 
-      renderEditableLogSection(logs);
-      initializeEditableLogControls();
+      // Editor UI removed; just render the page
       renderPage(logs, filterInput?.value || "");
 
       if (filterInput) {
@@ -756,9 +762,6 @@ function loadAndRender() {
       // Fallback to local logs only
       const logs = loadLogs();
       allSalesLogs = logs;
-
-      renderEditableLogSection(logs);
-      initializeEditableLogControls();
       renderPage(logs, filterInput?.value || "");
 
       if (status) {
@@ -772,7 +775,8 @@ function loadAndRender() {
 document.addEventListener("DOMContentLoaded", () => {
   currentUser = "";
   setupSalesLogin();
-  showSalesLoginModal();
+  // Do not show admin login modal; render public view immediately
+  loadAndRender();
 });
 
 // redeploy

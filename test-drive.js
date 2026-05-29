@@ -172,8 +172,16 @@ function getDriveKey(d) {
 function loadAndRender() {
   const filterInput = document.getElementById("td-filter-input");
   const clearBtn = document.getElementById("td-clear-filter");
+  function apiFetch(path, options) {
+    const isAbsolute = /^(https?:)?\/\//i.test(path);
+    if (isAbsolute) return fetch(path, options);
+    if (location.protocol === "file:") {
+      return fetch("http://localhost:3000" + path, options);
+    }
+    return fetch(path, options);
+  }
 
-  fetch("/api/test-drives?t=" + new Date().getTime())
+  apiFetch("/api/test-drives?t=" + new Date().getTime())
     .then((response) => {
       if (!response.ok) throw new Error("Could not load test drives");
       return response.json();

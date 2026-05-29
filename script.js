@@ -1674,7 +1674,11 @@ function persistSaleLog(entry) {
     license_plate: record.licensePlate,
   };
 
-  fetch("/save-sale", {
+  // Use apiFetch helper if present (added below) otherwise fallback to fetch
+  const apiFetchFn =
+    typeof apiFetch === "function" ? apiFetch : (p, o) => fetch(p, o);
+
+  apiFetchFn("/save-sale", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1774,6 +1778,16 @@ function setupModal() {
   }
 }
 
+// Helper to make API requests work even when page is opened via file://
+function apiFetch(path, options) {
+  const isAbsolute = /^(https?:)?\/\//i.test(path);
+  if (isAbsolute) return fetch(path, options);
+  if (location.protocol === "file:") {
+    return fetch("http://localhost:3000" + path, options);
+  }
+  return fetch(path, options);
+}
+
 function openModal(vehicle) {
   activeVehicle = vehicle;
   const modal = document.getElementById("vehicle-modal");
@@ -1819,7 +1833,7 @@ function handleTestDriveSubmit() {
     : currentUser || "Unknown";
 
   const payload = {
-    date: new Date().toLocaleString("en-GB"),
+    // Do not send `date` for test-drives — the DB table does not include a `date` column.
     salesperson: salespersonName,
     vehicle: activeVehicle.name,
     price: 500,
@@ -1830,7 +1844,7 @@ function handleTestDriveSubmit() {
   tdButton.textContent = "Saving...";
   tdButton.disabled = true;
 
-  fetch("/save-test-drive", {
+  apiFetch("/save-test-drive", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
