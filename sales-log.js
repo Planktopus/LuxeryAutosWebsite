@@ -152,20 +152,25 @@ function parseRawLog(raw) {
         entry.customer = value;
         break;
       case "id number":
+      case "id_number":
         entry.idNumber = value;
         break;
       case "vehicle":
       case "vehicle sold":
+      case "vehicle_sold":
         entry.vehicle = value;
         break;
       case "sell price":
+      case "sell_price":
         entry.sellPrice = parseCurrencyValue(value);
         break;
       case "discount":
       case "discount given":
+      case "discount_given":
         entry.discountPercent = Number(value.replace("%", "").trim()) || 0;
         break;
       case "license plate":
+      case "license_plate":
         entry.licensePlate = value;
         break;
       default:
@@ -179,7 +184,6 @@ function parseRawLog(raw) {
 
   return entry;
 }
-
 function parseCurrencyValue(value) {
   return Number(value.replace(/[^0-9.-]+/g, "")) || 0;
 }
@@ -206,18 +210,34 @@ function parseSalesLogTextToEntries(text) {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+function convertEntryToServerRecord(entry) {
+  return {
+    date: entry.date || new Date().toISOString(),
+    salesperson: entry.salesperson || "",
+    customer: entry.customer || "",
+    id_number: entry.idNumber || "",
+    vehicle: entry.vehicle || "",
+    sell_price: Number(entry.sellPrice) || 0,
+    discount: Number(entry.discountPercent) || 0,
+    license_plate: entry.licensePlate || "",
+  };
+}
+
 async function saveSalesLogEntriesToServer(logText) {
   const records = parseSalesLogTextToEntries(logText);
   if (!records.length) {
     throw new Error("No valid sales records found to save.");
   }
 
+  // 1. Map entries to use snake_case properties matching your backend database columns
+  const payload = records.map(convertEntryToServerRecord);
+
   const response = await fetch("/save-sales-log", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(records),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -227,7 +247,9 @@ async function saveSalesLogEntriesToServer(logText) {
     );
   }
 
-  localStorage.setItem("salesLogText", logText);
+  // 2. Re-generate a clean, uniform raw text string so the parser won't choke on reload
+  const structuralText = generateLogText(records);
+  localStorage.setItem("salesLogText", structuralText);
   return true;
 }
 
@@ -450,8 +472,12 @@ function getRawLogChunks(logs) {
 function saveEditedEntryText(index, newText, logs) {
   const chunks = getRawLogChunks(logs);
   if (index < 0 || index >= chunks.length) return;
+
+  // Clean up any stray whitespaces or missing linebreaks within the edited chunk
   chunks[index] = newText.trim();
-  localStorage.setItem("salesLogText", chunks.join("\n\n----\n\n"));
+  const newFullText = chunks.join("\n\n----\n\n");
+
+  localStorage.setItem("salesLogText", newFullText);
 }
 
 function activateSaleEntryEdit(entry, index, logs) {
@@ -652,31 +678,39 @@ function loadAndRender() {
             // so that the admin editor doesn't break when clicked.
             const formattedRawText = [
               `Date: ${item.date || ""}`,
-              `Salesperson: ${item.salesperson || ""}`,
-              `Customer name: ${item.customer || ""}`,
-              `ID Number: ${item.id_number || ""}`,
-              `Vehicle Sold: ${item.vehicle || ""}`,
-              `Sell price: ${typeof item.sell_price === "number" ? formatCurrency(item.sell_price) : item.sell_price || ""}`,
-              `Discount given: ${typeof item.discount === "number" ? item.discount + "%" : item.discount || "0%"}`,
-              `License plate: ${item.license_plate || ""}`,
+              `Salesperson: ${item.salesperson || item.salesperson || ""}`,
+              `Customer name: ${item.customer || item.customer || ""}`,
+              `ID Number: ${item.id_number || item.idNumber || ""}`,
+              `Vehicle Sold: ${item.vehicle || item.vehicle || ""}`,
+              `Sell price: ${typeof item.sell_price === "number" ? formatCurrency(item.sell_price) : typeof item.sellPrice === "number" ? formatCurrency(item.sellPrice) : item.sell_price || item.sellPrice || ""}`,
+              `Discount given: ${typeof item.discount === "number" ? item.discount + "%" : typeof item.discountPercent === "number" ? item.discountPercent + "%" : item.discount || item.discountPercent || "0%"}`,
+              `License plate: ${item.license_plate || item.licensePlate || ""}`,
             ].join("\n");
 
             return {
               date: item.date || new Date().toISOString(),
-              salesperson: item.salesperson || "",
-              customer: item.customer || "",
-              idNumber: item.id_number || "",
-              vehicle: item.vehicle || "",
+              salesperson: item.salesperson || item.salesperson || "",
+              customer: item.customer || item.customer || "",
+              idNumber: item.id_number || item.idNumber || "",
+              vehicle: item.vehicle || item.vehicle || "",
               // Normalize back to numbers for calculations (Leaderboard, Summary)
               sellPrice:
                 typeof item.sell_price === "number"
                   ? item.sell_price
-                  : Number(item.sell_price?.replace(/[^0-9.-]+/g, "")) || 0,
+                  : typeof item.sellPrice === "number"
+                    ? item.sellPrice
+                    : Number(item.sell_price?.replace(/[^0-9.-]+/g, "")) ||
+                      Number(item.sellPrice?.replace(/[^0-9.-]+/g, "")) ||
+                      0,
               discountPercent:
                 typeof item.discount === "number"
                   ? item.discount
-                  : Number(item.discount?.replace("%", "")) || 0,
-              licensePlate: item.license_plate || "",
+                  : typeof item.discountPercent === "number"
+                    ? item.discountPercent
+                    : Number(item.discount?.replace("%", "")) ||
+                      Number(item.discountPercent?.replace("%", "")) ||
+                      0,
+              licensePlate: item.license_plate || item.licensePlate || "",
               rawText: formattedRawText,
             };
           })
