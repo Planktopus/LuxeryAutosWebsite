@@ -179,7 +179,20 @@ function loadAndRender() {
       return response.json();
     })
     .then((data) => {
-      const serverDrives = Array.isArray(data) ? data : [];
+      const serverDrives = (Array.isArray(data) ? data : [])
+        .map((item) => {
+          if (!item) return null;
+
+          // DE FIX: Als salesperson niet bestaat, pakken we fullname (voor je handmatige database logs)
+          return {
+            date: item.date || new Date().toLocaleString("en-GB"),
+            salesperson: item.salesperson || item.fullname || "Unknown",
+            vehicle: item.vehicle || "Unknown Vehicle",
+            price: Number(item.price) || 500,
+          };
+        })
+        .filter(Boolean);
+
       const localDrives = loadStoredLocalDrives();
 
       // Merge server and local drives so that nothing is ever lost
@@ -206,32 +219,13 @@ function loadAndRender() {
         err,
       );
 
-      // Fallback to local storage test drives
       allTestDrives = loadStoredLocalDrives().sort((a, b) => {
         return new Date(b.date) - new Date(a.date) || 1;
       });
 
       updatePageDisplay(filterInput?.value || "");
-
-      const listEl = document.getElementById("td-logs-list");
-      const warnBanner = document.createElement("div");
-      warnBanner.style.color = "#ffb300";
-      warnBanner.style.marginBottom = "15px";
-      warnBanner.style.textAlign = "center";
-      warnBanner.style.fontWeight = "bold";
-      warnBanner.textContent =
-        "Warning: Showing local fallback data. Check database/server connection.";
-      if (
-        listEl &&
-        listEl.firstChild &&
-        !listEl.querySelector(".local-warn-banner")
-      ) {
-        warnBanner.className = "local-warn-banner";
-        listEl.insertBefore(warnBanner, listEl.firstChild);
-      }
     });
 
-  // Initialize inputs outside the promise callback so they work instantly
   if (filterInput && !filterInput.dataset.listener) {
     filterInput.dataset.listener = "true";
     filterInput.addEventListener("input", () => {
@@ -247,7 +241,6 @@ function loadAndRender() {
     });
   }
 }
-
 document.addEventListener("DOMContentLoaded", () => {
   currentUser = localStorage.getItem("loggedInUser");
   if (currentUser === ADMIN_USERNAME) {
