@@ -8,7 +8,8 @@ const SUPABASE_URL =
   process.env.SUPABASE_URL || "https://ughlabwtcwcnosmirhpy.supabase.co";
 const SUPABASE_SERVICE_KEY =
   process.env.SUPABASE_SERVICE_KEY ||
-
+  process.env.SUPABASE_KEY ||
+  "sb_secret_P2K43AiwbQvlaYUcJQPkUA_PNVP95J5";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 app.use(express.json());
