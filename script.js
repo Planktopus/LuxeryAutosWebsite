@@ -1399,6 +1399,8 @@ const roster = [
   { username: "cynthia", password: "Cynthia312", fullname: "Cynthia Jones" },
   { username: "tyler", password: "Tyler778", fullname: "Tyler Omo" },
   { username: "rumi", password: "Rumi264", fullname: "Rumi Valentine" },
+  {username: "sallie", password: "Sallie193", fullname: "Sallie Sparquelz"},
+  {username:"trainee", password: "Trainee123", fullname: "Trainee Employee"},
   {
     username: "luxery",
     password: "JohnnyIsAmazing67",
