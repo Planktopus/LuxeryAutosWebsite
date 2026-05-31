@@ -1501,6 +1501,15 @@ function checkSession() {
   const stored = sessionStorage.getItem("loggedInUser");
   if (stored) {
     currentUser = JSON.parse(stored);
+  } else {
+    // Automatically pop up the staff login modal on startup to prompt the user
+    setTimeout(() => {
+      openLoginModal();
+      showToast(
+        "Welcome to Luxery Autos! Please authenticate using your staff credentials to proceed.",
+        "warning",
+      );
+    }, 800);
   }
   renderAuthUI();
 }
@@ -1547,6 +1556,7 @@ function openLoginModal() {
   card.classList.add("scale-100");
 }
 
+// Safely configure and shut login portal
 function closeLoginModal() {
   const modal = document.getElementById("login-modal");
   const card = document.getElementById("login-modal-card");
@@ -2260,7 +2270,18 @@ function persistSaleLog(entry) {
 async function handleTestDriveSubmit() {
   if (!activeVehicle) return;
 
-  const salespersonName = currentUser ? currentUser.fullname : "Sales Team";
+  // Enforce staff profile authentication for drive logs
+  if (!currentUser) {
+    closeModal();
+    openLoginModal();
+    showToast(
+      "Authorization Required: Please log in using your staff profile to log test drives.",
+      "warning",
+    );
+    return;
+  }
+
+  const salespersonName = currentUser.fullname;
 
   const payload = {
     date: new Date().toLocaleString("en-GB"),
