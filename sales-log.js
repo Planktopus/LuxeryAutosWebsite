@@ -1,4 +1,3 @@
-let currentUser = "";
 let salesLogEditMode = false;
 let allSalesLogs = [];
 
@@ -160,20 +159,7 @@ function parseSalesLogTextToEntries(text) {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
-function convertEntryToServerRecord(entry) {
-  return {
-    date: entry.date || new Date().toISOString(),
-    salesperson: entry.salesperson || "",
-    customer: entry.customer || "",
-    id_number: entry.idNumber || "",
-    vehicle: entry.vehicle || "",
-    sell_price: Number(entry.sellPrice) || 0,
-    discount: Number(entry.discountPercent) || 0,
-    license_plate: entry.licensePlate || "",
-  };
-}
-
-async function saveSalesLogEntriesToServer(logText) {
+async function saveSalesLogEntriesLocally(logText) {
   const records = parseSalesLogTextToEntries(logText);
   if (!records.length) {
     throw new Error("No valid sales records found to save.");
@@ -618,7 +604,6 @@ function loadAndRender() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  currentUser = "";
   loadAndRender();
 });
 

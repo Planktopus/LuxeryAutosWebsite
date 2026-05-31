@@ -1376,60 +1376,54 @@ const categories = [
   },
 ];
 
-const roster = [
-  { username: "quandale", password: "Quandale382", fullname: "Quandale Brown" },
-  { username: "jordan-k", password: "Jordan921", fullname: "Jordan Karlman" },
-  {
-    username: "headphanie",
-    password: "Headphanie984",
-    fullname: "Headphanie Stroke",
-  },
-  { username: "nico", password: "Nico193", fullname: "Nico Asher" },
-  {
-    username: "rosalynn",
-    password: "Rosalynn651",
-    fullname: "Rosalynn Moniker",
-  },
-  { username: "jordan-t", password: "Jordan841", fullname: "Jordan Teller" },
-  { username: "dan", password: "Dan504", fullname: "Dan King" },
-  {
-    username: "johnny",
-    password: "Johnny905",
-    fullname: "Johnny Jackson Jones",
-  },
-  { username: "tobias", password: "Tobias739", fullname: "Tobias Nobel" },
-  { username: "cynthia", password: "Cynthia312", fullname: "Cynthia Jones" },
-  { username: "tyler", password: "Tyler778", fullname: "Tyler Omo" },
-  { username: "rumi", password: "Rumi264", fullname: "Rumi Valentine" },
-  { username: "sallie", password: "Sallie193", fullname: "Sallie Sparquelz" },
-  { username: "trainee", password: "Trainee123", fullname: "Trainee Employee" },
-  {
-    username: "luxery",
-    password: "JohnnyIsAmazing67",
-    fullname: "Luxery Autos",
-  },
-];
-
-const rosterCredentials = roster.reduce((map, member) => {
-  const key = member.username.toLowerCase();
-  if (!map[key]) {
-    map[key] = [];
-  }
-  map[key].push(member.password);
-  return map;
-}, {});
-
-const ADMIN_USERNAME = "luxery";
-let currentUser = localStorage.getItem("loggedInUser") || "";
 let currentSearchTerm = "";
 let activeVehicle = null;
 
+// ─── Google Apps Script endpoints ───────────────────────────────────────────
+// 1. Open your Google Sheet → Extensions → Apps Script
+// 2. Paste the doPost() function (see instructions below)
+// 3. Deploy as Web app → Execute as: Me → Who has access: Anyone
+// 4. Copy the deployment URL and paste it below
+
+const POST_ENDPOINT =
+  "https://script.google.com/macros/s/AKfycbwaiCMdCgYry3PZH22EmtOGchcfXzg14TlISqQPdkKB5IDitztO3WT9lleVobhLlkTdZA/exec"; // Sales sheet
+const POST_ENDPOINT_TEST_DRIVES =
+  "https://script.google.com/macros/s/AKfycbzE-LEaH0fzARCxizDJd6oOLSdqiNOjH5p7qIoxvgkW3RJHQEEv_jDVzS82myL7i8aIxQ/exec"; // Test drives sheet
+
+// Google Apps Script code to paste in your sheet:
+// function doPost(e) {
+//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+//   if (sheet.getLastRow() === 0) {
+//     sheet.appendRow(["Date","Salesperson","Customer","ID Number","Vehicle","Sell Price","Discount","License Plate"]);
+//   }
+//   const data = JSON.parse(e.postData.contents);
+//   sheet.appendRow([data.date, data.salesperson, data.customer, data.id_number, data.vehicle, data.sell_price, data.discount, data.license_plate]);
+//   return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+// }
+// ────────────────────────────────────────────────────────────────────────────
+
+async function postJsonData(payload, endpoint) {
+  const target = endpoint?.trim();
+  if (!target) {
+    return { skipped: true };
+  }
+
+  await fetch(target, {
+    method: "POST",
+    mode: "no-cors", // Required for Google Apps Script
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  // no-cors returns opaque response, so we just assume success
+  return { success: true };
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  currentUser = localStorage.getItem("loggedInUser") || "";
   displayCategories();
-  displayRoster();
   setupSearch();
-  renderAdminButton();
+  setupModal();
+  renderLogButtons();
 });
 
 function displayCategories(searchTerm = "") {
@@ -1509,22 +1503,18 @@ function displayCategories(searchTerm = "") {
         } else {
           const grid = document.createElement("div");
           grid.className = "vehicle-grid";
-
           group.vehicles.forEach((vehicle) => {
             grid.appendChild(createVehicleCard(vehicle));
           });
-
           section.appendChild(grid);
         }
       });
     } else {
       const grid = document.createElement("div");
       grid.className = "vehicle-grid";
-
       category.vehicles.forEach((vehicle) => {
         grid.appendChild(createVehicleCard(vehicle));
       });
-
       section.appendChild(grid);
     }
 
@@ -1532,19 +1522,12 @@ function displayCategories(searchTerm = "") {
   });
 }
 
-function renderAdminButton() {
-  const existing = document.getElementById("admin-log-button");
-  if (currentUser !== ADMIN_USERNAME) {
-    if (existing) existing.remove();
-    return;
-  }
-
-  if (existing) return;
-
+function renderLogButtons() {
   const heroContent = document.querySelector(".hero-content");
   if (!heroContent) return;
+  const existing = document.getElementById("admin-log-button");
+  if (existing) return;
 
-  // Create wrapper for the admin dashboard buttons
   const btnGroup = document.createElement("div");
   btnGroup.id = "admin-log-button";
   btnGroup.className = "admin-btn-group";
@@ -1571,39 +1554,14 @@ function renderAdminButton() {
 function setupSearch() {
   const searchInput = document.getElementById("search-input");
   if (!searchInput) return;
-
   searchInput.addEventListener("input", (event) => {
     currentSearchTerm = event.target.value;
     displayCategories(currentSearchTerm);
   });
 }
 
-function displayRoster() {
-  const rosterSection = document.querySelector(".roster-section");
-  const rosterGrid = document.getElementById("roster-grid");
-  if (!rosterSection || !rosterGrid) return;
-
-  if (currentUser !== ADMIN_USERNAME) {
-    rosterSection.style.display = "none";
-    rosterGrid.innerHTML = "";
-    return;
-  }
-
-  rosterSection.style.display = "";
-  rosterGrid.innerHTML = "";
-
-  roster.forEach((member) => {
-    const card = document.createElement("div");
-    card.className = "roster-card";
-    card.innerHTML = `
-            <div class="roster-detail"><span>Username:</span> ${member.username}</div>
-            <div class="roster-detail"><span>Name:</span> ${member.fullname}</div>
-        `;
-    rosterGrid.appendChild(card);
-  });
-}
-
 function persistSaleLog(entry) {
+  // Save to localStorage
   const salesLogs = JSON.parse(localStorage.getItem("salesLogs") || "[]");
   const record = {
     date: new Date().toLocaleString("en-GB"),
@@ -1621,6 +1579,7 @@ function persistSaleLog(entry) {
     );
   }
 
+  // Sync to Google Sheets if endpoint is configured
   const payload = {
     date: record.date,
     salesperson: record.salesperson,
@@ -1632,14 +1591,10 @@ function persistSaleLog(entry) {
     license_plate: record.licensePlate,
   };
 
-  // Optionally sync sale data if POST_ENDPOINT is configured
-  const endpoint = POST_ENDPOINT.trim();
-  if (endpoint) {
-    postJsonData(payload, endpoint)
-      .then((data) =>
-        console.log("Sale successfully synced with cloud server:", data),
-      )
-      .catch((error) => console.error("Error saving to server:", error));
+  if (POST_ENDPOINT.trim()) {
+    postJsonData(payload, POST_ENDPOINT)
+      .then(() => console.log("Sale synced to Google Sheets."))
+      .catch((error) => console.error("Error saving to Google Sheets:", error));
   }
 }
 
@@ -1648,8 +1603,8 @@ function createVehicleCard(vehicle) {
   card.className = "vehicle-card";
 
   card.innerHTML = `
-        <img 
-            src="${vehicle.image}" 
+        <img
+            src="${vehicle.image}"
             alt="${vehicle.name}"
             class="vehicle-image"
             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22250%22%3E%3Crect fill=%22%232d2d2d%22 width=%22400%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2218%22 fill=%22%23b8b8b8%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EImage Not Available%3C/text%3E%3C/svg%3E'"
@@ -1741,15 +1696,13 @@ function openModal(vehicle) {
     updateModalDiscount(Number(discountSelect.value));
   }
 
-  // AUTOMATIC DYNAMIC INJECTION: Ensure "Test Drive" button exists next to the "Sell" button
+  // Inject Test Drive button if not already present
   const sellButton = document.getElementById("sell-car-button");
   if (sellButton && !document.getElementById("test-drive-button")) {
     const tdButton = document.createElement("button");
     tdButton.id = "test-drive-button";
     tdButton.className = "test-drive-button";
     tdButton.textContent = "Test Drive ($500)";
-
-    // Insert directly after the sell-car-button
     sellButton.parentNode.insertBefore(tdButton, sellButton.nextSibling);
     tdButton.addEventListener("click", handleTestDriveSubmit);
   }
@@ -1760,16 +1713,9 @@ function openModal(vehicle) {
 async function handleTestDriveSubmit() {
   if (!activeVehicle) return;
 
-  const currentMember = roster.find(
-    (m) => m.username.toLowerCase() === (currentUser || "").toLowerCase(),
-  );
-  const salespersonName = currentMember
-    ? currentMember.fullname
-    : currentUser || "Unknown";
-
   const payload = {
-    date: new Date().toISOString(),
-    salesperson: salespersonName,
+    date: new Date().toLocaleString("en-GB"),
+    salesperson: "Sales Team",
     vehicle: activeVehicle.name,
     price: 500,
   };
@@ -1781,6 +1727,7 @@ async function handleTestDriveSubmit() {
     tdButton.disabled = true;
   }
 
+  // Save locally
   const localDrives = JSON.parse(
     localStorage.getItem("testDrivesLogs") || "[]",
   );
@@ -1788,14 +1735,14 @@ async function handleTestDriveSubmit() {
   localStorage.setItem("testDrivesLogs", JSON.stringify(localDrives));
 
   try {
-    const result = await postJsonData(payload);
-    console.log("Test drive payload sent", result);
+    await postJsonData(payload, POST_ENDPOINT_TEST_DRIVES);
+    console.log("Test drive synced to Google Sheets.");
     if (tdButton) {
       tdButton.textContent = "Logged! ✓";
       tdButton.style.backgroundColor = "#2ecc71";
     }
   } catch (err) {
-    console.error("Test drive remote write failed:", err);
+    console.error("Test drive sync failed:", err);
     if (tdButton) {
       tdButton.textContent = "Saved Locally";
       tdButton.style.backgroundColor = "#f39c12";
@@ -1819,12 +1766,7 @@ function openSellModal() {
 
   const salespersonEl = document.getElementById("sell-salesperson");
   if (salespersonEl) {
-    const currentMember = roster.find(
-      (m) => m.username.toLowerCase() === (currentUser || "").toLowerCase(),
-    );
-    salespersonEl.value = currentMember
-      ? currentMember.fullname
-      : currentUser || "";
+    salespersonEl.value = "Sales Team";
   }
 
   ["sell-customer", "sell-id", "sell-plate"].forEach((id) => {
@@ -1916,31 +1858,9 @@ License plate: ${licensePlate}
     rawText: saleText,
   });
 
-  const payload = {
-    date: saleDate,
-    salesperson,
-    customer,
-    id_number: idNumber,
-    vehicle: activeVehicle ? activeVehicle.name : "Unknown",
-    sell_price: sellPriceValue,
-    discount: discountPercent,
-    license_plate: licensePlate,
-  };
-
-  try {
-    const result = await postJsonData(payload);
-    console.log("Sale payload sent", result);
-    if (confirmation) {
-      confirmation.textContent = result?.skipped
-        ? "Sale saved locally. Remote endpoint is not configured."
-        : "Sale submitted successfully! Details copied to clipboard.";
-    }
-  } catch (error) {
-    console.error("Sale remote write failed:", error);
-    if (confirmation) {
-      confirmation.textContent =
-        "Sale saved locally. Remote write failed. Check console for details.";
-    }
+  if (confirmation) {
+    confirmation.textContent =
+      "Sale submitted successfully! Details copied to clipboard.";
   }
 
   navigator.clipboard

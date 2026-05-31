@@ -1,4 +1,3 @@
-let currentUser = localStorage.getItem("loggedInUser") || "";
 let allTestDrives = [];
 
 function formatCurrency(value) {
@@ -147,6 +146,5 @@ function loadAndRender() {
   }
 }
 document.addEventListener("DOMContentLoaded", () => {
-  currentUser = localStorage.getItem("loggedInUser") || "";
   loadAndRender();
 });
