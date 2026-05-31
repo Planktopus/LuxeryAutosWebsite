@@ -564,7 +564,6 @@ function loadAndRender() {
   const status = document.getElementById("log-status");
   const filterInput = document.getElementById("sales-log-filter");
   const clearFilter = document.getElementById("clear-filter-button");
-  const downloadButton = document.getElementById("download-log-button");
 
   const logs = loadLogs();
   allSalesLogs = logs;
@@ -598,7 +597,8 @@ function loadAndRender() {
   }
 
   if (status) {
-    status.textContent = "Static mode: showing local browser data only.";
+    status.textContent =
+      "Showing your personal sales log stored in this browser.";
     status.style.display = "block";
   }
 }

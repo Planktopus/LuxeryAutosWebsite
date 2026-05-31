@@ -1479,11 +1479,7 @@ function injectDynamicUISystems() {
   overlay.className = "custom-login-overlay";
   overlay.id = "custom-login-overlay";
 
-  let rosterOptions = `<option value="">-- Quick Load Testing Roster --</option>`;
-  roster.forEach(
-    (r) =>
-      (rosterOptions += `<option value="${r.username}">${r.fullname}</option>`),
-  );
+  // De rosterOptions lus is volledig verwijderd omdat we de dropdown niet meer renderen.
 
   overlay.innerHTML = `
     <div class="custom-login-box">
@@ -1491,16 +1487,14 @@ function injectDynamicUISystems() {
         <h2>Staff Login</h2>
         <p>You must authenticate your staff profile to perform sales operations and process customer test drives.</p>
         <form id="custom-login-form">
-            <select id="roster-select" onchange="autoFillLogin()">
-                ${rosterOptions}
-            </select>
+            <!-- De select dropdown is hier verwijderd zodat de medewerkerslijst onzichtbaar is -->
             <input type="text" id="login-user" placeholder="Username" required />
             <input type="password" id="login-pass" placeholder="Password" required />
             <div id="login-error" class="custom-login-error">Access Denied: Invalid Credentials</div>
             <button type="submit">Authenticate</button>
         </form>
     </div>
-  `;
+`;
   document.body.appendChild(overlay);
 
   // 3. Inject Toast Container
