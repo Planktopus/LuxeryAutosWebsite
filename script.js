@@ -1377,54 +1377,55 @@ const categories = [
 ];
 
 const roster = [
-  { username: "quandale", password: "Quandale382", fullname: "Quandale Brown" },
-  { username: "jordan-k", password: "Jordan921", fullname: "Jordan Karlman" },
-  { username: "saylor", password: "Saylor576", fullname: "Saylor Stroke" },
-  { username: "nico", password: "Nico193", fullname: "Nico Asher" },
-  {
-    username: "rosalynn",
-    password: "Rosalynn651",
-    fullname: "Rosalynn Moniker",
-  },
-  { username: "jordan-t", password: "Jordan841", fullname: "Jordan Teller" },
-  { username: "dan", password: "Dan504", fullname: "Dan King" },
-  {
-    username: "johnny",
-    password: "Johnny905",
-    fullname: "Johnny Jackson Jones",
-  },
-  { username: "tobias", password: "Tobias739", fullname: "Tobias Nobel" },
-  { username: "cynthia", password: "Cynthia312", fullname: "Cynthia Jones" },
-  { username: "tyler", password: "Tyler778", fullname: "Tyler Omo" },
-  { username: "rumi", password: "Rumi264", fullname: "Rumi Valentine" },
-  {
-    username: "luxery",
-    password: "JohnnyIsAmazing67",
-    fullname: "Luxery Autos",
-  },
+  { username: "luxery", fullname: "Luxery Autos" },
+  { username: "alex", fullname: "Alex Carter" },
+  { username: "maria", fullname: "Maria Brooks" },
+  { username: "jordan", fullname: "Jordan Lee" },
 ];
 
-const rosterCredentials = roster.reduce((map, member) => {
-  const key = member.username.toLowerCase();
-  if (!map[key]) {
-    map[key] = [];
+const POST_ENDPOINT = ""; // Set this to your Google Apps Script POST URL
+
+function getFormValues(form) {
+  if (!(form instanceof HTMLFormElement)) return {};
+  return Array.from(new FormData(form)).reduce((data, [key, value]) => {
+    data[key] = value;
+    return data;
+  }, {});
+}
+
+async function postJsonData(payload, endpoint = POST_ENDPOINT) {
+  if (!endpoint) {
+    console.warn("No POST endpoint configured; skipping remote write.");
+    return { skipped: true };
   }
-  map[key].push(member.password);
-  return map;
-}, {});
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Remote POST failed: ${response.status} ${response.statusText} ${errorText}`,
+    );
+  }
+
+  return response.json().catch(() => null);
+}
 
 const ADMIN_USERNAME = "luxery";
-let currentUser = null;
+let currentUser = localStorage.getItem("loggedInUser") || "";
 let currentSearchTerm = "";
 let activeVehicle = null;
-let loginModal = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-  currentUser = localStorage.getItem("loggedInUser");
+  currentUser = localStorage.getItem("loggedInUser") || "";
   displayCategories();
   displayRoster();
-  setupModal();
-  setupLogin();
   setupSearch();
   renderAdminButton();
 });
@@ -1594,55 +1595,10 @@ function displayRoster() {
     card.className = "roster-card";
     card.innerHTML = `
             <div class="roster-detail"><span>Username:</span> ${member.username}</div>
-            <div class="roster-detail"><span>Password:</span> ${member.password}</div>
+            <div class="roster-detail"><span>Name:</span> ${member.fullname}</div>
         `;
     rosterGrid.appendChild(card);
   });
-}
-
-function setupLogin() {
-  loginModal = document.getElementById("login-modal");
-  const loginForm = document.getElementById("login-form");
-  const loginError = document.getElementById("login-error");
-
-  if (loginForm) {
-    loginForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-
-      const username = document
-        .getElementById("login-username")
-        .value.trim()
-        .toLowerCase();
-      const password = document.getElementById("login-password").value;
-      const validPasswords = rosterCredentials[username] || [];
-
-      if (validPasswords.includes(password)) {
-        currentUser = username;
-        localStorage.setItem("loggedInUser", username);
-        if (loginError) loginError.textContent = "";
-        closeLoginModal();
-        renderAdminButton();
-        displayRoster();
-      } else if (loginError) {
-        loginError.textContent =
-          "Invalid username or password. Please try again.";
-        loginError.style.color = "#ff6b6b";
-      }
-    });
-  }
-
-  if (loginModal) {
-    loginModal.classList.add("active");
-    document.body.style.overflow = "hidden";
-    document.getElementById("login-username")?.focus();
-  }
-}
-
-function closeLoginModal() {
-  if (loginModal) {
-    loginModal.classList.remove("active");
-    document.body.style.overflow = "";
-  }
 }
 
 function persistSaleLog(entry) {
@@ -1674,25 +1630,15 @@ function persistSaleLog(entry) {
     license_plate: record.licensePlate,
   };
 
-  // Use apiFetch helper if present (added below) otherwise fallback to fetch
-  const apiFetchFn =
-    typeof apiFetch === "function" ? apiFetch : (p, o) => fetch(p, o);
-
-  apiFetchFn("/save-sale", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  })
-    .then((response) => {
-      if (!response.ok) throw new Error("Network response was not ok");
-      return response.json();
-    })
-    .then((data) =>
-      console.log("Sale successfully synced with cloud server:", data),
-    )
-    .catch((error) => console.error("Error saving to server:", error));
+  // Optionally sync sale data if POST_ENDPOINT is configured
+  const endpoint = POST_ENDPOINT.trim();
+  if (endpoint) {
+    postJsonData(payload, endpoint)
+      .then((data) =>
+        console.log("Sale successfully synced with cloud server:", data),
+      )
+      .catch((error) => console.error("Error saving to server:", error));
+  }
 }
 
 function createVehicleCard(vehicle) {
@@ -1761,8 +1707,6 @@ function setupModal() {
     if (e.key === "Escape") {
       if (sellModal.classList.contains("active")) {
         closeSellModal();
-      } else if (loginModal && loginModal.classList.contains("active")) {
-        return;
       } else {
         closeModal();
       }
@@ -1776,16 +1720,6 @@ function setupModal() {
       }
     });
   }
-}
-
-// Helper to make API requests work even when page is opened via file://
-function apiFetch(path, options) {
-  const isAbsolute = /^(https?:)?\/\//i.test(path);
-  if (isAbsolute) return fetch(path, options);
-  if (location.protocol === "file:") {
-    return fetch("http://localhost:3000" + path, options);
-  }
-  return fetch(path, options);
 }
 
 function openModal(vehicle) {
@@ -1821,10 +1755,9 @@ function openModal(vehicle) {
   modal.classList.add("active");
 }
 
-function handleTestDriveSubmit() {
+async function handleTestDriveSubmit() {
   if (!activeVehicle) return;
 
-  // Get current logged-in salesperson's full name
   const currentMember = roster.find(
     (m) => m.username.toLowerCase() === (currentUser || "").toLowerCase(),
   );
@@ -1833,48 +1766,48 @@ function handleTestDriveSubmit() {
     : currentUser || "Unknown";
 
   const payload = {
-    // Do not send `date` for test-drives — the DB table does not include a `date` column.
+    date: new Date().toISOString(),
     salesperson: salespersonName,
     vehicle: activeVehicle.name,
     price: 500,
   };
 
   const tdButton = document.getElementById("test-drive-button");
-  const originalText = tdButton.textContent;
-  tdButton.textContent = "Saving...";
-  tdButton.disabled = true;
+  const originalText = tdButton?.textContent || "Saving...";
+  if (tdButton) {
+    tdButton.textContent = "Saving...";
+    tdButton.disabled = true;
+  }
 
-  apiFetch("/save-test-drive", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  })
-    .then((response) => {
-      if (!response.ok) throw new Error("Failed to save test drive");
-      return response.json();
-    })
-    .then((data) => {
+  const localDrives = JSON.parse(
+    localStorage.getItem("testDrivesLogs") || "[]",
+  );
+  localDrives.push(payload);
+  localStorage.setItem("testDrivesLogs", JSON.stringify(localDrives));
+
+  try {
+    const result = await postJsonData(payload);
+    console.log("Test drive payload sent", result);
+    if (tdButton) {
       tdButton.textContent = "Logged! ✓";
       tdButton.style.backgroundColor = "#2ecc71";
-      setTimeout(() => {
+    }
+  } catch (err) {
+    console.error("Test drive remote write failed:", err);
+    if (tdButton) {
+      tdButton.textContent = "Saved Locally";
+      tdButton.style.backgroundColor = "#f39c12";
+    }
+  } finally {
+    setTimeout(() => {
+      if (tdButton) {
         tdButton.textContent = originalText;
         tdButton.style.backgroundColor = "";
         tdButton.disabled = false;
-        closeModal();
-      }, 1200);
-    })
-    .catch((err) => {
-      console.error(err);
-      tdButton.textContent = "Failed ✗";
-      tdButton.style.backgroundColor = "#e74c3c";
-      setTimeout(() => {
-        tdButton.textContent = originalText;
-        tdButton.style.backgroundColor = "";
-        tdButton.disabled = false;
-      }, 2000);
-    });
+      }
+      closeModal();
+    }, 1200);
+  }
 }
 
 function openSellModal() {
@@ -1925,7 +1858,7 @@ function isInvalidLicensePlate(value) {
   return /^[\s\W_-]+$/.test(value);
 }
 
-function submitSellForm(event) {
+async function submitSellForm(event) {
   event.preventDefault();
 
   const salesperson = document.getElementById("sell-salesperson").value.trim();
@@ -1981,16 +1914,45 @@ License plate: ${licensePlate}
     rawText: saleText,
   });
 
+  const payload = {
+    date: saleDate,
+    salesperson,
+    customer,
+    id_number: idNumber,
+    vehicle: activeVehicle ? activeVehicle.name : "Unknown",
+    sell_price: sellPriceValue,
+    discount: discountPercent,
+    license_plate: licensePlate,
+  };
+
+  try {
+    const result = await postJsonData(payload);
+    console.log("Sale payload sent", result);
+    if (confirmation) {
+      confirmation.textContent = result?.skipped
+        ? "Sale saved locally. Remote endpoint is not configured."
+        : "Sale submitted successfully! Details copied to clipboard.";
+    }
+  } catch (error) {
+    console.error("Sale remote write failed:", error);
+    if (confirmation) {
+      confirmation.textContent =
+        "Sale saved locally. Remote write failed. Check console for details.";
+    }
+  }
+
   navigator.clipboard
     .writeText(saleText)
     .then(() => {
-      if (confirmation) {
-        confirmation.textContent =
-          "Sale submitted successfully! Details copied to clipboard.";
+      if (
+        confirmation &&
+        !confirmation.textContent?.includes("Details copied")
+      ) {
+        confirmation.textContent += " Details copied to clipboard.";
       }
     })
     .catch(() => {
-      if (confirmation) {
+      if (confirmation && !confirmation.textContent?.includes("copied")) {
         confirmation.textContent = "Sale submitted, but clipboard copy failed.";
       }
     });

@@ -1,56 +1,6 @@
-const ADMIN_USERNAME = "luxery";
-const SALES_ADMIN_PASSWORD = "JohnnyIsAmazing67";
 let currentUser = "";
 let salesLogEditMode = false;
 let allSalesLogs = [];
-
-function showSalesLoginModal() {
-  const modal = document.getElementById("sales-login-modal");
-  if (!modal) return;
-  modal.classList.add("active");
-  document.body.classList.add("page-locked");
-  document.body.style.overflow = "hidden";
-}
-
-function hideSalesLoginModal() {
-  const modal = document.getElementById("sales-login-modal");
-  if (!modal) return;
-  modal.classList.remove("active");
-  document.body.classList.remove("page-locked");
-  document.body.style.overflow = "";
-}
-
-function setupSalesLogin() {
-  const loginForm = document.getElementById("sales-login-form");
-  const loginError = document.getElementById("sales-login-error");
-
-  if (!loginForm) return;
-
-  loginForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const usernameInput = document.getElementById("sales-login-username");
-    const passwordInput = document.getElementById("sales-login-password");
-
-    const username = usernameInput?.value.trim().toLowerCase() || "";
-    const password = passwordInput?.value || "";
-
-    if (username !== ADMIN_USERNAME || password !== SALES_ADMIN_PASSWORD) {
-      if (loginError) {
-        loginError.textContent =
-          "Access denied. Only luxery may view this page.";
-        loginError.style.color = "#ff6b6b";
-      }
-      return;
-    }
-
-    currentUser = username;
-    localStorage.setItem("loggedInUser", username);
-    if (loginError) loginError.textContent = "";
-    hideSalesLoginModal();
-    loadAndRender();
-  });
-}
 
 function normalizeLogEntry(entry) {
   if (!entry) return null;
@@ -210,55 +160,21 @@ function parseSalesLogTextToEntries(text) {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
-function convertEntryToServerRecord(entry) {
-  return {
-    date: entry.date || new Date().toISOString(),
-    salesperson: entry.salesperson || "",
-    customer: entry.customer || "",
-    id_number: entry.idNumber || "",
-    vehicle: entry.vehicle || "",
-    sell_price: Number(entry.sellPrice) || 0,
-    discount: Number(entry.discountPercent) || 0,
-    license_plate: entry.licensePlate || "",
-  };
-}
-
-async function saveSalesLogEntriesToServer(logText) {
+async function saveSalesLogEntriesLocally(logText) {
   const records = parseSalesLogTextToEntries(logText);
   if (!records.length) {
     throw new Error("No valid sales records found to save.");
   }
 
-  // 1. Map entries to use snake_case properties matching your backend database columns
-  const payload = records.map(convertEntryToServerRecord);
-
-  function apiFetch(path, options) {
-    const isAbsolute = /^(https?:)?\/\//i.test(path);
-    if (isAbsolute) return fetch(path, options);
-    if (location.protocol === "file:") {
-      return fetch("http://localhost:3000" + path, options);
-    }
-    return fetch(path, options);
-  }
-
-  const response = await apiFetch("/save-sales-log", {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to save sales log: ${response.status} ${errorText}`,
-    );
-  }
-
-  // 2. Re-generate a clean, uniform raw text string so the parser won't choke on reload
   const structuralText = generateLogText(records);
   localStorage.setItem("salesLogText", structuralText);
+
+  const existingLogs = loadStoredLogs();
+  const mergedLogs = [...existingLogs, ...records].sort(
+    (a, b) => new Date(b.date) - new Date(a.date),
+  );
+  localStorage.setItem("salesLogs", JSON.stringify(mergedLogs));
+
   return true;
 }
 
@@ -340,7 +256,7 @@ function renderSaleCards(logs) {
   const list = document.getElementById("sales-log-list");
   if (!list) return;
 
-  const isAdmin = localStorage.getItem("loggedInUser") === ADMIN_USERNAME;
+  const isAdmin = false;
 
   if (!logs.length) {
     list.innerHTML = '<div class="sales-empty">No sales recorded yet.</div>';
@@ -508,15 +424,8 @@ function setLogEditMode(enabled) {
 function renderEditableLogSection(logs) {
   const section = document.getElementById("editable-log-section");
   if (!section) return;
-  const currentUser = localStorage.getItem("loggedInUser") || "";
-  if (currentUser !== ADMIN_USERNAME) {
-    section.style.display = "none";
-    return;
-  }
-
-  section.style.display = "block";
-  const editor = document.getElementById("sales-log-editor");
-  const status = document.getElementById("log-save-status");
+  section.style.display = "none";
+  return;
   const textValue =
     localStorage.getItem("salesLogText") || generateLogText(logs);
 
@@ -558,11 +467,11 @@ function initializeEditableLogControls() {
       let saveMessage = "Sales log updated locally.";
       if (editor) {
         try {
-          await saveSalesLogEntriesToServer(fullLogText);
-          saveMessage = "Sales log updated and saved to DB.";
+          await saveSalesLogEntriesLocally(fullLogText);
+          saveMessage = "Sales log updated locally.";
         } catch (saveErr) {
           console.warn(saveErr);
-          saveMessage = "Saved locally, but DB save failed.";
+          saveMessage = "Saved locally.";
         }
       }
 
@@ -599,11 +508,11 @@ function initializeEditableLogControls() {
       let saveMessage = "Sales log updated locally.";
       if (editor) {
         try {
-          await saveSalesLogEntriesToServer(fullLogText);
-          saveMessage = "Sales log updated and saved to DB.";
+          await saveSalesLogEntriesLocally(fullLogText);
+          saveMessage = "Sales log updated locally.";
         } catch (saveErr) {
           console.warn(saveErr);
-          saveMessage = "Saved locally, but DB save failed.";
+          saveMessage = "Saved locally.";
         }
       }
 
@@ -658,124 +567,45 @@ function loadAndRender() {
   const clearFilter = document.getElementById("clear-filter-button");
   const downloadButton = document.getElementById("download-log-button");
 
-  // Fetch raw logs array directly from the server
-  function apiFetch(path, options) {
-    const isAbsolute = /^(https?:)?\/\//i.test(path);
-    if (isAbsolute) return fetch(path, options);
-    if (location.protocol === "file:") {
-      return fetch("http://localhost:3000" + path, options);
-    }
-    return fetch(path, options);
+  const logs = loadLogs();
+  allSalesLogs = logs;
+  renderPage(logs, filterInput?.value || "");
+
+  if (filterInput && !filterInput.dataset.listener) {
+    filterInput.dataset.listener = "true";
+    filterInput.addEventListener("input", () =>
+      renderPage(logs, filterInput.value),
+    );
   }
 
-  apiFetch("/api/sales?t=" + new Date().getTime())
-    .then((response) => {
-      if (!response.ok) throw new Error("Could not load sales from server");
-      return response.json();
-    })
-    .then((data) => {
-      let serverLogs = [];
-
-      if (Array.isArray(data)) {
-        serverLogs = data
-          .map((item) => {
-            if (!item) return null;
-
-            // Automatically generate rawText in the classic multi-line key-value format
-            // so that the admin editor doesn't break when clicked.
-            const formattedRawText = [
-              `Date: ${item.date || ""}`,
-              `Salesperson: ${item.salesperson || item.salesperson || ""}`,
-              `Customer name: ${item.customer || item.customer || ""}`,
-              `ID Number: ${item.id_number || item.idNumber || ""}`,
-              `Vehicle Sold: ${item.vehicle || item.vehicle || ""}`,
-              `Sell price: ${typeof item.sell_price === "number" ? formatCurrency(item.sell_price) : typeof item.sellPrice === "number" ? formatCurrency(item.sellPrice) : item.sell_price || item.sellPrice || ""}`,
-              `Discount given: ${typeof item.discount === "number" ? item.discount + "%" : typeof item.discountPercent === "number" ? item.discountPercent + "%" : item.discount || item.discountPercent || "0%"}`,
-              `License plate: ${item.license_plate || item.licensePlate || ""}`,
-            ].join("\n");
-
-            return {
-              date: item.date || new Date().toISOString(),
-              salesperson: item.salesperson || item.salesperson || "",
-              customer: item.customer || item.customer || "",
-              idNumber: item.id_number || item.idNumber || "",
-              vehicle: item.vehicle || item.vehicle || "",
-              // Normalize back to numbers for calculations (Leaderboard, Summary)
-              sellPrice:
-                typeof item.sell_price === "number"
-                  ? item.sell_price
-                  : typeof item.sellPrice === "number"
-                    ? item.sellPrice
-                    : Number(item.sell_price?.replace(/[^0-9.-]+/g, "")) ||
-                      Number(item.sellPrice?.replace(/[^0-9.-]+/g, "")) ||
-                      0,
-              discountPercent:
-                typeof item.discount === "number"
-                  ? item.discount
-                  : typeof item.discountPercent === "number"
-                    ? item.discountPercent
-                    : Number(item.discount?.replace("%", "")) ||
-                      Number(item.discountPercent?.replace("%", "")) ||
-                      0,
-              licensePlate: item.license_plate || item.licensePlate || "",
-              rawText: formattedRawText,
-            };
-          })
-          .filter(Boolean);
-      }
-
-      const logs = serverLogs.sort(
-        (a, b) => new Date(b.date) - new Date(a.date),
-      );
-      allSalesLogs = logs;
-
-      // Editor UI removed; just render the page
-      renderPage(logs, filterInput?.value || "");
-
-      if (filterInput) {
-        filterInput.addEventListener("input", () =>
-          renderPage(logs, filterInput.value),
-        );
-      }
-
-      if (clearFilter) {
-        clearFilter.addEventListener("click", () => {
-          if (filterInput) filterInput.value = "";
-          renderPage(logs, "");
-        });
-      }
-
-      if (downloadButton) {
-        downloadButton.addEventListener("click", () => {
-          const payload = generateLogText(logs) || "No sales recorded yet.";
-          const blob = new Blob([payload], { type: "text/plain" });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = "sales-log.txt";
-          link.click();
-          URL.revokeObjectURL(link.href);
-        });
-      }
-    })
-    .catch((err) => {
-      console.error("Error loading from server:", err);
-      // Fallback to local logs only
-      const logs = loadLogs();
-      allSalesLogs = logs;
-      renderPage(logs, filterInput?.value || "");
-
-      if (status) {
-        status.textContent =
-          "Warning: Could not connect to server. Showing local data only.";
-        status.style.display = "block";
-      }
+  if (clearFilter && !clearFilter.dataset.listener) {
+    clearFilter.dataset.listener = "true";
+    clearFilter.addEventListener("click", () => {
+      if (filterInput) filterInput.value = "";
+      renderPage(logs, "");
     });
+  }
+
+  if (downloadButton) {
+    downloadButton.addEventListener("click", () => {
+      const payload = generateLogText(logs) || "No sales recorded yet.";
+      const blob = new Blob([payload], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "sales-log.txt";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+  }
+
+  if (status) {
+    status.textContent = "Static mode: showing local browser data only.";
+    status.style.display = "block";
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   currentUser = "";
-  setupSalesLogin();
-  // Do not show admin login modal; render public view immediately
   loadAndRender();
 });
 

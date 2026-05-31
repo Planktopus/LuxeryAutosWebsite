@@ -1,84 +1,96 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Luxury Autos - Sales Log</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
     <section class="hero">
-        <div class="hero-content">
-            <h1 class="brand-title">Sales Log</h1>
-            <p class="tagline">Only the luxery account can access this page. It reads from <code>sales-log.txt</code> and shows local sale history.</p>
-            <a id="back-index-button" class="sell-submit back-button" href="index.html">Back to Inventory</a>
-        </div>
+      <div class="hero-content">
+        <h1 class="brand-title">Sales Log</h1>
+        <p class="tagline">
+          This page runs entirely in the browser and shows local sale history
+          stored in your browser.
+        </p>
+        <a
+          id="back-index-button"
+          class="sell-submit back-button"
+          href="index.html"
+          >Back to Inventory</a
+        >
+      </div>
     </section>
 
-    <div id="sales-login-modal" class="modal">
-        <div class="modal-content">
-            <h2 class="modal-name">Sales Page Login</h2>
-            <p class="tagline">Please log in with the luxery account to access the sales log.</p>
-            <form id="sales-login-form" class="sell-form">
-                <div class="form-row">
-                    <label for="sales-login-username">Username</label>
-                    <input id="sales-login-username" type="text" placeholder="Enter username" autocomplete="username" required>
-                </div>
-                <div class="form-row">
-                    <label for="sales-login-password">Password</label>
-                    <input id="sales-login-password" type="password" placeholder="Enter password" autocomplete="current-password" required>
-                </div>
-                <button type="submit" class="sell-submit">Log In</button>
-                <div id="sales-login-error" class="sell-confirmation"></div>
-            </form>
-        </div>
-    </div>
-
     <section class="inventory-section">
-        <div class="inventory-container">
-            <h2 class="inventory-title">Sales Log Viewer</h2>
-            <div id="log-status" class="error-message" style="display: none;"></div>
-            <div class="sales-log-controls">
-                <input id="sales-log-filter" type="text" placeholder="Filter by salesperson, vehicle, customer, or ID">
-                <button id="clear-filter-button" class="sell-submit">Clear Filter</button>
-            </div>
-            <div class="sales-log-summary">
-                <div class="summary-card">
-                    <div class="summary-label">Total Sales</div>
-                    <div id="summary-count" class="summary-value">0</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">Last 30 Days</div>
-                    <div id="summary-30d" class="summary-value">0</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-label">Luxury Revenue</div>
-                    <div id="summary-revenue" class="summary-value">$0</div>
-                </div>
-            </div>
-            <h2 class="inventory-title">Leaderboard – Last 30 Days</h2>
-            <div id="leaderboard-list" class="leaderboard-list"></div>
-            <hr class="section-divider">
-            <div class="sales-log-header">
-                <h2 class="inventory-title">Sales Log Entries</h2>
-            </div>
-            <div id="sales-log-list" class="sales-grid"></div>
-            <div id="editable-log-section" class="log-edit-panel" style="display:none;">
-                <div class="editable-header">
-                    <h2 class="inventory-title">Edit Sales Log</h2>
-                    <button id="toggle-edit-button" class="icon-button">✏️ Edit</button>
-                </div>
-                <textarea id="sales-log-editor" class="log-editor" placeholder="Edit the raw sales log text here..." readonly></textarea>
-                <div class="sales-log-controls">
-                    <button id="done-log-button" class="sell-submit" style="display:none;">Done</button>
-                    <button id="reset-log-button" class="sell-submit">Reset Log</button>
-                </div>
-                <div id="log-save-status" class="sell-confirmation"></div>
-            </div>
-            <button id="download-log-button" class="sell-submit">Download Local Log</button>
+      <div class="inventory-container">
+        <h2 class="inventory-title">Sales Log Viewer</h2>
+        <div id="log-status" class="error-message" style="display: none"></div>
+        <div class="sales-log-controls">
+          <input
+            id="sales-log-filter"
+            type="text"
+            placeholder="Filter by salesperson, vehicle, customer, or ID"
+          />
+          <button id="clear-filter-button" class="sell-submit">
+            Clear Filter
+          </button>
         </div>
+        <div class="sales-log-summary">
+          <div class="summary-card">
+            <div class="summary-label">Total Sales</div>
+            <div id="summary-count" class="summary-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Last 30 Days</div>
+            <div id="summary-30d" class="summary-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Luxury Revenue</div>
+            <div id="summary-revenue" class="summary-value">$0</div>
+          </div>
+        </div>
+        <h2 class="inventory-title">Leaderboard – Last 30 Days</h2>
+        <div id="leaderboard-list" class="leaderboard-list"></div>
+        <hr class="section-divider" />
+        <div class="sales-log-header">
+          <h2 class="inventory-title">Sales Log Entries</h2>
+        </div>
+        <div id="sales-log-list" class="sales-grid"></div>
+        <div
+          id="editable-log-section"
+          class="log-edit-panel"
+          style="display: none"
+        >
+          <div class="editable-header">
+            <h2 class="inventory-title">Edit Sales Log</h2>
+            <button id="toggle-edit-button" class="icon-button">✏️ Edit</button>
+          </div>
+          <textarea
+            id="sales-log-editor"
+            class="log-editor"
+            placeholder="Edit the raw sales log text here..."
+            readonly
+          ></textarea>
+          <div class="sales-log-controls">
+            <button
+              id="done-log-button"
+              class="sell-submit"
+              style="display: none"
+            >
+              Done
+            </button>
+            <button id="reset-log-button" class="sell-submit">Reset Log</button>
+          </div>
+          <div id="log-save-status" class="sell-confirmation"></div>
+        </div>
+        <button id="download-log-button" class="sell-submit">
+          Download Local Log
+        </button>
+      </div>
     </section>
 
     <script src="sales-log.js"></script>
-</body>
+  </body>
 </html>

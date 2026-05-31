@@ -1,53 +1,5 @@
-const ADMIN_USERNAME = "luxery";
-const SALES_ADMIN_PASSWORD = "JohnnyIsAmazing67";
-let currentUser = "";
+let currentUser = localStorage.getItem("loggedInUser") || "";
 let allTestDrives = [];
-
-function showSalesLoginModal() {
-  const modal = document.getElementById("sales-login-modal");
-  if (!modal) return;
-  modal.classList.add("active");
-  document.body.style.overflow = "hidden";
-}
-
-function hideSalesLoginModal() {
-  const modal = document.getElementById("sales-login-modal");
-  if (!modal) return;
-  modal.classList.remove("active");
-  document.body.style.overflow = "";
-}
-
-function setupSalesLogin() {
-  const loginForm = document.getElementById("sales-login-form");
-  const loginError = document.getElementById("sales-login-error");
-
-  if (!loginForm) return;
-
-  loginForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const usernameInput = document.getElementById("sales-login-username");
-    const passwordInput = document.getElementById("sales-login-password");
-
-    const username = usernameInput?.value.trim().toLowerCase() || "";
-    const password = passwordInput?.value || "";
-
-    if (username !== ADMIN_USERNAME || password !== SALES_ADMIN_PASSWORD) {
-      if (loginError) {
-        loginError.textContent =
-          "Access denied. Only luxery may view this page.";
-        loginError.style.color = "#ff6b6b";
-      }
-      return;
-    }
-
-    currentUser = username;
-    localStorage.setItem("loggedInUser", username);
-    if (loginError) loginError.textContent = "";
-    hideSalesLoginModal();
-    loadAndRender();
-  });
-}
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("en-US", {
@@ -172,67 +124,12 @@ function getDriveKey(d) {
 function loadAndRender() {
   const filterInput = document.getElementById("td-filter-input");
   const clearBtn = document.getElementById("td-clear-filter");
-  function apiFetch(path, options) {
-    const isAbsolute = /^(https?:)?\/\//i.test(path);
-    if (isAbsolute) return fetch(path, options);
-    if (location.protocol === "file:") {
-      return fetch("http://localhost:3000" + path, options);
-    }
-    return fetch(path, options);
-  }
 
-  apiFetch("/api/test-drives?t=" + new Date().getTime())
-    .then((response) => {
-      if (!response.ok) throw new Error("Could not load test drives");
-      return response.json();
-    })
-    .then((data) => {
-      const serverDrives = (Array.isArray(data) ? data : [])
-        .map((item) => {
-          if (!item) return null;
+  allTestDrives = loadStoredLocalDrives().sort((a, b) => {
+    return new Date(b.date) - new Date(a.date) || 1;
+  });
 
-          // DE FIX: Als salesperson niet bestaat, pakken we fullname (voor je handmatige database logs)
-          return {
-            date: item.date || new Date().toLocaleString("en-GB"),
-            salesperson: item.salesperson || item.fullname || "Unknown",
-            vehicle: item.vehicle || "Unknown Vehicle",
-            price: Number(item.price) || 500,
-          };
-        })
-        .filter(Boolean);
-
-      const localDrives = loadStoredLocalDrives();
-
-      // Merge server and local drives so that nothing is ever lost
-      const seenKeys = new Set(serverDrives.map(getDriveKey));
-      const merged = [...serverDrives];
-
-      localDrives.forEach((d) => {
-        const key = getDriveKey(d);
-        if (!seenKeys.has(key)) {
-          merged.push(d);
-          seenKeys.add(key);
-        }
-      });
-
-      allTestDrives = merged.sort((a, b) => {
-        return new Date(b.date) - new Date(a.date) || 1;
-      });
-
-      updatePageDisplay(filterInput?.value || "");
-    })
-    .catch((err) => {
-      console.warn(
-        "Could not connect to server, loading local backup test drives:",
-        err,
-      );
-
-      allTestDrives = loadStoredLocalDrives().sort((a, b) => {
-        return new Date(b.date) - new Date(a.date) || 1;
-      });
-
-      updatePageDisplay(filterInput?.value || "");
-    });
+  updatePageDisplay(filterInput?.value || "");
 
   if (filterInput && !filterInput.dataset.listener) {
     filterInput.dataset.listener = "true";
@@ -250,12 +147,6 @@ function loadAndRender() {
   }
 }
 document.addEventListener("DOMContentLoaded", () => {
-  currentUser = localStorage.getItem("loggedInUser");
-  if (currentUser === ADMIN_USERNAME) {
-    hideSalesLoginModal();
-    loadAndRender();
-  } else {
-    showSalesLoginModal();
-    setupSalesLogin();
-  }
+  currentUser = localStorage.getItem("loggedInUser") || "";
+  loadAndRender();
 });
