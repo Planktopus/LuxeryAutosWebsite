@@ -1483,7 +1483,6 @@ function injectDynamicUISystems() {
 
   overlay.innerHTML = `
     <div class="custom-login-box">
-        <div class="custom-login-close" onclick="closeDynamicLogin()">✖</div>
         <h2>Staff Login</h2>
         <p>You must authenticate your staff profile to perform sales operations and process customer test drives.</p>
         <form id="custom-login-form">
