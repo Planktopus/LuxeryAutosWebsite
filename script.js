@@ -1,4 +1,3 @@
-// ─── ROSTER DEFINITIONS ───────────────────────────────────────────
 const roster = [
   { username: "quandale", password: "Quandale382", fullname: "Quandale Brown" },
   { username: "jordan-k", password: "Jordan921", fullname: "Jordan Karlman" },
@@ -33,7 +32,7 @@ const roster = [
   },
 ];
 
-// ─── VEHICLE INVENTORY DATA ───────────────────────────────────────
+// Vehicle Inventory Data — organized by category
 const categories = [
   {
     id: "american/uk",
@@ -1411,81 +1410,20 @@ const categories = [
   },
 ];
 
-// ─── STATE MANAGEMENT ─────────────────────────────────────────────
 let currentSearchTerm = "";
 let activeVehicle = null;
-let currentUser = null; // Holds authenticated active user
+let currentUser = null; // Holds the currently authenticated user object
 
-// ─── ENDPOINTS ────────────────────────────────────────────────────
 const POST_ENDPOINT =
   "https://script.google.com/macros/s/AKfycbwaiCMdCgYry3PZH22EmtOGchcfXzg14TlISqQPdkKB5IDitztO3WT9lleVobhLlkTdZA/exec";
 const POST_ENDPOINT_TEST_DRIVES =
   "https://script.google.com/macros/s/AKfycbzE-LEaH0fzARCxizDJd6oOLSdqiNOjH5p7qIoxvgkW3RJHQEEv_jDVzS82myL7i8aIxQ/exec";
 
-// ─── CLIPBOARD COMPATIBILITY WRAPPER ─────────────────────────────
-function copyTextToClipboard(text) {
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  textArea.style.position = "fixed";
-  document.body.appendChild(textArea);
-  textArea.focus();
-  textArea.select();
-  let success = false;
-  try {
-    success = document.execCommand("copy");
-  } catch (err) {
-    console.error("Fallback clipboard error:", err);
-  }
-  document.body.removeChild(textArea);
-  return success;
-}
-
-// ─── CUSTOM ALERT/TOAST NOTIFICATION SYSTEM ──────────────────────
-function showToast(message, type = "success") {
-  const container = document.getElementById("toast-container");
-  if (!container) return;
-
-  const toast = document.createElement("div");
-  toast.className = `p-4 rounded-xl border flex items-center justify-between space-x-3 shadow-xl transform translate-y-2 opacity-0 transition-all duration-300 ${
-    type === "success"
-      ? "bg-emerald-950/90 border-emerald-500/30 text-emerald-200"
-      : type === "error"
-        ? "bg-rose-950/90 border-rose-500/30 text-rose-200"
-        : "bg-amber-950/90 border-amber-500/30 text-amber-200"
-  }`;
-
-  let icon = '<i class="fa-solid fa-circle-check text-lg"></i>';
-  if (type === "error")
-    icon = '<i class="fa-solid fa-circle-exclamation text-lg"></i>';
-  if (type === "warning")
-    icon = '<i class="fa-solid fa-triangle-exclamation text-lg"></i>';
-
-  toast.innerHTML = `
-    <div class="flex items-center space-x-3">
-      ${icon}
-      <span class="text-sm font-semibold">${message}</span>
-    </div>
-    <button class="text-xs opacity-50 hover:opacity-100 transition-opacity" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
-  `;
-
-  container.appendChild(toast);
-
-  // Force trigger animation
-  setTimeout(() => {
-    toast.classList.remove("translate-y-2", "opacity-0");
-  }, 50);
-
-  // Auto dismiss after 4 seconds
-  setTimeout(() => {
-    toast.classList.add("translate-y-2", "opacity-0");
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
-}
-
-// ─── API SEND ─────────────────────────────────────────────────────
 async function postJsonData(payload, endpoint) {
   const target = endpoint?.trim();
-  if (!target) return { skipped: true };
+  if (!target) {
+    return { skipped: true };
+  }
 
   await fetch(target, {
     method: "POST",
@@ -1493,174 +1431,184 @@ async function postJsonData(payload, endpoint) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
   return { success: true };
 }
 
-// ─── SESSION & AUTH CONTROLLER ────────────────────────────────────
+function injectDynamicUISystems() {
+  // 1. Inject Styles for the overlay & toast so it works without touching the original HTML
+  const dynamicStyles = document.createElement("style");
+  dynamicStyles.innerHTML = `
+    .custom-login-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 10, 15, 0.9); display: flex; justify-content: center; align-items: center;
+      z-index: 999999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; font-family: sans-serif;
+    }
+    .custom-login-overlay.active {
+      opacity: 1; pointer-events: auto;
+    }
+    .custom-login-box {
+      background: #1e1e24; padding: 2rem; border-radius: 12px; width: 90%; max-width: 400px;
+      color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid #333;
+    }
+    .custom-login-box h2 { margin-top: 0; font-size: 1.5rem; color: #fff; }
+    .custom-login-box p { font-size: 0.85rem; color: #aaa; margin-bottom: 20px; line-height: 1.4; }
+    .custom-login-box select, .custom-login-box input {
+      width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #444; 
+      background: #111; color: white; box-sizing: border-box; font-size: 14px;
+    }
+    .custom-login-box button {
+      width: 100%; padding: 12px; margin-top: 15px; border: none; border-radius: 6px;
+      background: #2ecc71; color: #000; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.2s;
+    }
+    .custom-login-box button:hover { background: #27ae60; }
+    .custom-login-close { text-align: right; cursor: pointer; color: #666; font-size: 18px; margin-bottom: -15px; font-weight: bold;}
+    .custom-login-close:hover { color: #fff; }
+    .custom-login-error { color: #e74c3c; font-size: 0.85rem; display: none; margin-top: 5px; font-weight: bold; }
+    
+    .custom-toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999999; display: flex; flex-direction: column; gap: 10px; }
+    .custom-toast { background: #2c3e50; color: white; padding: 15px 20px; border-radius: 8px; font-family: sans-serif; font-size: 14px; font-weight: 500; opacity: 0; transform: translateY(10px); transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-left: 4px solid #2ecc71; }
+    .custom-toast.error-toast { border-left-color: #e74c3c; background: #342222; }
+    .custom-toast.warning-toast { border-left-color: #f1c40f; background: #332d18; }
+    .custom-toast.show { opacity: 1; transform: translateY(0); }
+  `;
+  document.head.appendChild(dynamicStyles);
+
+  // 2. Inject The HTML Overlay for Login
+  const overlay = document.createElement("div");
+  overlay.className = "custom-login-overlay";
+  overlay.id = "custom-login-overlay";
+
+  let rosterOptions = `<option value="">-- Quick Load Testing Roster --</option>`;
+  roster.forEach(
+    (r) =>
+      (rosterOptions += `<option value="${r.username}">${r.fullname}</option>`),
+  );
+
+  overlay.innerHTML = `
+    <div class="custom-login-box">
+        <div class="custom-login-close" onclick="closeDynamicLogin()">✖</div>
+        <h2>Staff Login</h2>
+        <p>You must authenticate your staff profile to perform sales operations and process customer test drives.</p>
+        <form id="custom-login-form">
+            <select id="roster-select" onchange="autoFillLogin()">
+                ${rosterOptions}
+            </select>
+            <input type="text" id="login-user" placeholder="Username" required />
+            <input type="password" id="login-pass" placeholder="Password" required />
+            <div id="login-error" class="custom-login-error">Access Denied: Invalid Credentials</div>
+            <button type="submit">Authenticate</button>
+        </form>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // 3. Inject Toast Container
+  const toastContainer = document.createElement("div");
+  toastContainer.id = "custom-toast-container";
+  toastContainer.className = "custom-toast-container";
+  document.body.appendChild(toastContainer);
+
+  // 4. Attach form logic
+  document
+    .getElementById("custom-login-form")
+    .addEventListener("submit", function (e) {
+      e.preventDefault();
+      const u = document
+        .getElementById("login-user")
+        .value.trim()
+        .toLowerCase();
+      const p = document.getElementById("login-pass").value;
+      const match = roster.find(
+        (user) => user.username.toLowerCase() === u && user.password === p,
+      );
+
+      if (match) {
+        currentUser = match;
+        sessionStorage.setItem("loggedInUser", JSON.stringify(match));
+        document.getElementById("login-error").style.display = "none";
+        closeDynamicLogin();
+        showDynamicToast(
+          "Authentication Successful. Welcome, " + match.fullname + "!",
+        );
+
+        // If the sell modal happens to be open, pre-fill the name
+        const salespersonEl = document.getElementById("sell-salesperson");
+        if (salespersonEl) {
+          salespersonEl.value = match.fullname;
+          salespersonEl.disabled = true; // Lock it to prevent spoofing
+        }
+      } else {
+        document.getElementById("login-error").style.display = "block";
+      }
+    });
+}
+
+// Global scope helpers for dynamic UI
+window.closeDynamicLogin = function () {
+  document.getElementById("custom-login-overlay").classList.remove("active");
+};
+
+window.openDynamicLogin = function () {
+  document.getElementById("custom-login-overlay").classList.add("active");
+  document.getElementById("login-error").style.display = "none";
+  document.getElementById("login-user").value = "";
+  document.getElementById("login-pass").value = "";
+  document.getElementById("roster-select").value = "";
+};
+
+window.autoFillLogin = function () {
+  const sel = document.getElementById("roster-select").value;
+  const match = roster.find((u) => u.username === sel);
+  if (match) {
+    document.getElementById("login-user").value = match.username;
+    document.getElementById("login-pass").value = match.password;
+  }
+};
+
+function showDynamicToast(msg, type = "success") {
+  const c = document.getElementById("custom-toast-container");
+  if (!c) return;
+  const t = document.createElement("div");
+  t.className = `custom-toast ${type}-toast`;
+  t.textContent = msg;
+  c.appendChild(t);
+
+  // Trigger animation
+  setTimeout(() => t.classList.add("show"), 10);
+
+  // Remove after duration
+  setTimeout(() => {
+    t.classList.remove("show");
+    setTimeout(() => t.remove(), 300);
+  }, 4000);
+}
+
 function checkSession() {
   const stored = sessionStorage.getItem("loggedInUser");
   if (stored) {
     currentUser = JSON.parse(stored);
   } else {
-    // Automatically pop up the staff login modal on startup to prompt the user
+    // If NO user is logged in, AUTO POPUP the login box slightly after page load
     setTimeout(() => {
-      openLoginModal();
-      showToast(
-        "Welcome to Luxery Autos! Please authenticate using your staff credentials to proceed.",
-        "warning",
-      );
-    }, 800);
-  }
-  renderAuthUI();
-}
-
-function renderAuthUI() {
-  const container = document.getElementById("auth-status-container");
-  if (!container) return;
-
-  if (currentUser) {
-    container.innerHTML = `
-      <div class="flex items-center space-x-3 text-sm">
-        <span class="h-2.5 w-2.5 rounded-full bg-brand-500 block"></span>
-        <span class="text-slate-300 font-medium">Logged in: <strong class="text-white">${currentUser.fullname}</strong></span>
-        <button onclick="logoutStaff()" class="text-xs bg-slate-800 hover:bg-slate-700 hover:text-white px-2.5 py-1 rounded-lg border border-slate-700 text-slate-400 font-bold transition-all">
-          Log out
-        </button>
-      </div>
-    `;
-  } else {
-    container.innerHTML = `
-      <div class="flex items-center space-x-3">
-        <span class="h-2.5 w-2.5 rounded-full bg-rose-500 block"></span>
-        <span class="text-slate-400 text-sm">Not authenticated</span>
-        <button onclick="openLoginModal()" class="text-xs bg-brand-500 hover:bg-brand-600 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg shadow-lg shadow-brand-500/10 transition-all">
-          Staff Login
-        </button>
-      </div>
-    `;
+      openDynamicLogin();
+    }, 600);
   }
 }
 
-function openLoginModal() {
-  const modal = document.getElementById("login-modal");
-  const card = document.getElementById("login-modal-card");
-  if (!modal || !card) return;
-
-  document.getElementById("login-error").classList.add("hidden");
-  document.getElementById("login-username").value = "";
-  document.getElementById("login-password").value = "";
-
-  modal.classList.remove("pointer-events-none");
-  modal.classList.add("opacity-100");
-  card.classList.remove("scale-95");
-  card.classList.add("scale-100");
-}
-
-// Safely configure and shut login portal
-function closeLoginModal() {
-  const modal = document.getElementById("login-modal");
-  const card = document.getElementById("login-modal-card");
-  if (!modal || !card) return;
-
-  modal.classList.add("pointer-events-none");
-  modal.classList.remove("opacity-100");
-  card.classList.add("scale-95");
-  card.classList.remove("scale-100");
-}
-
-function submitLoginForm(event) {
-  event.preventDefault();
-  const userVal = document
-    .getElementById("login-username")
-    .value.trim()
-    .toLowerCase();
-  const passVal = document.getElementById("login-password").value;
-
-  const profile = roster.find(
-    (u) => u.username.toLowerCase() === userVal && u.password === passVal,
-  );
-  if (profile) {
-    currentUser = profile;
-    sessionStorage.setItem("loggedInUser", JSON.stringify(profile));
-    showToast(`Successfully authenticated as ${profile.fullname}!`, "success");
-    closeLoginModal();
-    renderAuthUI();
-  } else {
-    document.getElementById("login-error").classList.remove("hidden");
-    showToast("Access Denied: Check credentials.", "error");
-  }
-}
-
-function logoutStaff() {
-  currentUser = null;
-  sessionStorage.removeItem("loggedInUser");
-  showToast("Logged out successfully.", "warning");
-  renderAuthUI();
-}
-
-// Open staff roster login shortcut tool helper
-function openRosterCheatSheet() {
-  const modal = document.getElementById("roster-cheat-sheet");
-  const card = document.getElementById("roster-cheat-card");
-  const list = document.getElementById("cheat-sheet-list");
-  if (!modal || !card || !list) return;
-
-  list.innerHTML = "";
-  roster.forEach((member) => {
-    const item = document.createElement("button");
-    item.className =
-      "w-full text-left p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/80 transition-all flex items-center justify-between group";
-    item.innerHTML = `
-      <div>
-        <div class="text-xs font-bold text-white group-hover:text-brand-500 transition-colors">${member.fullname}</div>
-        <div class="text-[10px] text-slate-500">Username: <span class="text-slate-300 font-semibold">${member.username}</span></div>
-      </div>
-      <span class="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2 py-1 rounded">Pass: ${member.password}</span>
-    `;
-    item.addEventListener("click", () => {
-      document.getElementById("login-username").value = member.username;
-      document.getElementById("login-password").value = member.password;
-      closeRosterCheatSheet();
-      openLoginModal();
-      showToast(
-        `Prepared credentials for ${member.fullname}. Click Authenticate.`,
-        "warning",
-      );
-    });
-    list.appendChild(item);
-  });
-
-  modal.classList.remove("pointer-events-none");
-  modal.classList.add("opacity-100");
-  card.classList.remove("scale-95");
-  card.classList.add("scale-100");
-}
-
-function closeRosterCheatSheet() {
-  const modal = document.getElementById("roster-cheat-sheet");
-  const card = document.getElementById("roster-cheat-card");
-  if (!modal || !card) return;
-
-  modal.classList.add("pointer-events-none");
-  modal.classList.remove("opacity-100");
-  card.classList.add("scale-95");
-  card.classList.remove("scale-100");
-}
-
-// ─── INITIALIZATION ───────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-  checkSession();
+  injectDynamicUISystems(); // Build out the auth systems seamlessly
   displayCategories();
   setupSearch();
   setupModal();
   renderLogButtons();
+
+  checkSession(); // Validates user and pops up the login box if needed!
 });
 
-// ─── RENDER CATALOG ───────────────────────────────────────────────
 function displayCategories(searchTerm = "") {
   const inventoryGrid = document.getElementById("inventory-grid");
-  if (!inventoryGrid) return;
-
+  if (!inventoryGrid) return; // safeguard
   inventoryGrid.innerHTML = "";
   const normalizedTerm = searchTerm.trim().toLowerCase();
 
@@ -1696,53 +1644,55 @@ function displayCategories(searchTerm = "") {
   }, []);
 
   if (filteredCategories.length === 0) {
-    inventoryGrid.innerHTML = `
-      <div class="text-center py-16 text-slate-500">
-        <i class="fa-solid fa-folder-open text-4xl mb-3 block opacity-30"></i>
-        <p>No vehicles match your search parameter "${searchTerm}".</p>
-      </div>
-    `;
+    const noResults = document.createElement("p");
+    noResults.className = "category-empty";
+    noResults.textContent = "No vehicles match your search.";
+    inventoryGrid.appendChild(noResults);
     return;
   }
 
   filteredCategories.forEach((category) => {
     const section = document.createElement("div");
-    section.className =
-      "category-section bg-slate-950/20 p-6 sm:p-8 rounded-3xl border border-slate-900/60 shadow-xl";
+    section.className = "category-section";
     section.id = `category-${category.id}`;
 
     const header = document.createElement("div");
-    header.className =
-      "category-header border-b border-slate-900 pb-4 mb-6 flex items-center justify-between";
-    header.innerHTML = `
-      <h3 class="category-title text-xl sm:text-2xl font-black text-white tracking-wide">${category.label} Collection</h3>
-      <span class="text-xs bg-slate-900 text-slate-500 px-3 py-1 rounded-full border border-slate-800 font-semibold uppercase">Category Container</span>
-    `;
+    header.className = "category-header";
+    header.innerHTML = `<h3 class="category-title">${category.label}</h3>`;
     section.appendChild(header);
 
-    if (category.groups && category.groups.length) {
+    if (
+      (!category.vehicles || category.vehicles.length === 0) &&
+      (!category.groups || category.groups.length === 0)
+    ) {
+      const empty = document.createElement("p");
+      empty.className = "category-empty";
+      empty.textContent = "No vehicles available in this category yet.";
+      section.appendChild(empty);
+    } else if (category.groups && category.groups.length) {
       category.groups.forEach((group) => {
         const groupHeader = document.createElement("div");
-        groupHeader.className =
-          "group-header mt-6 mb-4 flex items-center space-x-2";
-        groupHeader.innerHTML = `
-          <span class="h-1.5 w-1.5 rounded-full bg-brand-gold"></span>
-          <h4 class="group-title text-sm font-extrabold text-brand-gold uppercase tracking-wider">${group.label} Support Tier</h4>
-        `;
+        groupHeader.className = "group-header";
+        groupHeader.innerHTML = `<h4 class="group-title">${group.label}</h4>`;
         section.appendChild(groupHeader);
 
-        const grid = document.createElement("div");
-        grid.className =
-          "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6";
-        group.vehicles.forEach((vehicle) => {
-          grid.appendChild(createVehicleCard(vehicle));
-        });
-        section.appendChild(grid);
+        if (!group.vehicles || group.vehicles.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "category-empty";
+          empty.textContent = "No vehicles available in this section yet.";
+          section.appendChild(empty);
+        } else {
+          const grid = document.createElement("div");
+          grid.className = "vehicle-grid";
+          group.vehicles.forEach((vehicle) => {
+            grid.appendChild(createVehicleCard(vehicle));
+          });
+          section.appendChild(grid);
+        }
       });
     } else {
       const grid = document.createElement("div");
-      grid.className =
-        "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6";
+      grid.className = "vehicle-grid";
       category.vehicles.forEach((vehicle) => {
         grid.appendChild(createVehicleCard(vehicle));
       });
@@ -1753,36 +1703,98 @@ function displayCategories(searchTerm = "") {
   });
 }
 
+function renderLogButtons() {
+  const heroContent = document.querySelector(".hero-content");
+  if (!heroContent) return;
+  const existing = document.getElementById("admin-log-button");
+  if (existing) return;
+
+  const btnGroup = document.createElement("div");
+  btnGroup.id = "admin-log-button";
+  btnGroup.className = "admin-btn-group";
+
+  const salesBtn = document.createElement("button");
+  salesBtn.className = "admin-log-button";
+  salesBtn.textContent = "Sales Log";
+  salesBtn.addEventListener("click", () => {
+    window.location.href = "sales-log.html";
+  });
+
+  const testDriveBtn = document.createElement("button");
+  testDriveBtn.className = "admin-log-button test-drive-nav-btn";
+  testDriveBtn.textContent = "Test Drives Log";
+  testDriveBtn.addEventListener("click", () => {
+    window.location.href = "test-drive.html";
+  });
+
+  btnGroup.appendChild(salesBtn);
+  btnGroup.appendChild(testDriveBtn);
+  heroContent.appendChild(btnGroup);
+}
+
+function setupSearch() {
+  const searchInput = document.getElementById("search-input");
+  if (!searchInput) return;
+  searchInput.addEventListener("input", (event) => {
+    currentSearchTerm = event.target.value;
+    displayCategories(currentSearchTerm);
+  });
+}
+
+function persistSaleLog(entry) {
+  // Save to localStorage
+  const salesLogs = JSON.parse(localStorage.getItem("salesLogs") || "[]");
+  const record = {
+    date: new Date().toLocaleString("en-GB"),
+    ...entry,
+  };
+  salesLogs.push(record);
+  localStorage.setItem("salesLogs", JSON.stringify(salesLogs));
+
+  const rawText = localStorage.getItem("salesLogText");
+  if (rawText !== null) {
+    const separator = rawText.trim() ? "\n\n----\n\n" : "";
+    localStorage.setItem(
+      "salesLogText",
+      rawText + separator + (record.rawText || ""),
+    );
+  }
+
+  // Sync to Google Sheets if endpoint is configured
+  const payload = {
+    date: record.date,
+    salesperson: record.salesperson,
+    customer: record.customer,
+    id_number: record.idNumber,
+    vehicle: record.vehicle,
+    sell_price: formatCurrency(record.sellPrice),
+    discount: record.discountPercent + "%",
+    license_plate: record.licensePlate,
+  };
+
+  if (POST_ENDPOINT.trim()) {
+    postJsonData(payload, POST_ENDPOINT)
+      .then(() => console.log("Sale synced to Google Sheets."))
+      .catch((error) => console.error("Error saving to Google Sheets:", error));
+  }
+}
+
 function createVehicleCard(vehicle) {
   const card = document.createElement("div");
-  card.className =
-    "glass-card rounded-2xl overflow-hidden cursor-pointer flex flex-col group relative";
-
-  const badgeColor =
-    vehicle.class === "S"
-      ? "bg-rose-500 text-white"
-      : vehicle.class === "A"
-        ? "bg-amber-500 text-slate-950"
-        : "bg-slate-700 text-white";
+  card.className = "vehicle-card";
 
   card.innerHTML = `
-    <div class="relative h-44 w-full bg-slate-950 flex items-center justify-center overflow-hidden">
-      <span class="absolute top-3 right-3 z-10 ${badgeColor} text-[10px] font-extrabold tracking-widest uppercase px-2 py-0.5 rounded-md shadow-md">${vehicle.class} Class</span>
-      <img
-        src="${vehicle.image}"
-        alt="${vehicle.name}"
-        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 relative z-0"
-        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22250%22%3E%3Crect fill=%22%23111827%22 width=%22400%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-family=%22system-ui%22 font-size=%2214%22 font-weight=%22bold%22 fill=%22%234b5563%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3E${vehicle.name}%3C/text%3E%3C/svg%3E'"
-      />
-    </div>
-    <div class="p-4 flex-grow flex flex-col justify-between">
-      <h3 class="text-sm font-extrabold text-white tracking-tight group-hover:text-brand-500 transition-colors line-clamp-1">${vehicle.name}</h3>
-      <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-850">
-        <span class="text-xs text-slate-400 font-medium">MSRP Quote</span>
-        <span class="text-sm font-black text-brand-500">${formatCurrency(vehicle.finalPrice)}</span>
-      </div>
-    </div>
-  `;
+        <img
+            src="${vehicle.image}"
+            alt="${vehicle.name}"
+            class="vehicle-image"
+            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22250%22%3E%3Crect fill=%22%232d2d2d%22 width=%22400%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2218%22 fill=%22%23b8b8b8%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EImage Not Available%3C/text%3E%3C/svg%3E'"
+        />
+        <div class="vehicle-info">
+            <h3 class="vehicle-name">${vehicle.name}</h3>
+            <p class="vehicle-price">${formatCurrency(vehicle.finalPrice)}</p>
+        </div>
+    `;
 
   card.addEventListener("click", () => openModal(vehicle));
   return card;
@@ -1797,144 +1809,17 @@ function formatCurrency(value) {
   }).format(value);
 }
 
-// ─── LOG BUTTONS IN HERO ─────────────────────────────────────────
-function renderLogButtons() {
-  const container = document.getElementById("admin-log-button");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const salesBtn = document.createElement("button");
-  salesBtn.className =
-    "bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl border border-slate-800 text-xs font-bold transition-all text-center flex items-center justify-center space-x-2";
-  salesBtn.innerHTML = `<i class="fa-solid fa-list-check text-brand-500"></i> <span>Sales Log</span>`;
-  salesBtn.addEventListener("click", () => viewLogs("sales"));
-
-  const testDriveBtn = document.createElement("button");
-  testDriveBtn.className =
-    "bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl border border-slate-800 text-xs font-bold transition-all text-center flex items-center justify-center space-x-2";
-  testDriveBtn.innerHTML = `<i class="fa-solid fa-gauge-high text-brand-500"></i> <span>Drives Log</span>`;
-  testDriveBtn.addEventListener("click", () => viewLogs("drives"));
-
-  container.appendChild(salesBtn);
-  container.appendChild(testDriveBtn);
-}
-
-// Interactive custom modal renderer to review sheet listings locally
-function viewLogs(type) {
-  const modal = document.getElementById("logs-modal");
-  const card = document.getElementById("logs-modal-card");
-  const title = document.getElementById("logs-modal-title");
-  const renderArea = document.getElementById("logs-render-area");
-  if (!modal || !card || !title || !renderArea) return;
-
-  if (type === "sales") {
-    title.innerHTML = `Sales Log Sheet <span class="ml-2 text-xs bg-brand-500/10 text-brand-500 px-2.5 py-0.5 rounded-full border border-brand-500/20">Synced Storage</span>`;
-    const localLogs = JSON.parse(localStorage.getItem("salesLogs") || "[]");
-
-    if (localLogs.length === 0) {
-      renderArea.innerHTML = `
-        <div class="text-center py-12 text-slate-500">
-          <i class="fa-solid fa-receipt text-3xl opacity-35 mb-2 block"></i>
-          No logged sales found in session memory. Complete a transaction form.
-        </div>`;
-    } else {
-      renderArea.innerHTML = localLogs
-        .map(
-          (log, i) => `
-        <div class="p-4 rounded-xl bg-slate-950 border border-slate-850 shadow space-y-2 text-sm">
-          <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-900 pb-2">
-            <span>Record Index #${i + 1}</span>
-            <span class="font-mono text-brand-500">${log.date}</span>
-          </div>
-          <div class="grid grid-cols-2 gap-y-2">
-            <div><span class="text-slate-500 block text-[10px] font-bold uppercase">Vehicle Sold</span><strong class="text-white">${log.vehicle}</strong></div>
-            <div><span class="text-slate-500 block text-[10px] font-bold uppercase">Salesperson (Roster Active)</span><span class="text-emerald-400 font-semibold">${log.salesperson}</span></div>
-            <div><span class="text-slate-500 block text-[10px] font-bold uppercase">Customer Profile</span><span class="text-slate-300">${log.customer} (ID: ${log.idNumber})</span></div>
-            <div><span class="text-slate-500 block text-[10px] font-bold uppercase">Plate / Reg</span><span class="text-slate-300 uppercase font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${log.licensePlate}</span></div>
-            <div><span class="text-slate-500 block text-[10px] font-bold uppercase">Sale Total</span><strong class="text-white">${formatCurrency(log.sellPrice)}</strong></div>
-            <div><span class="text-slate-500 block text-[10px] font-bold uppercase">Discount Given</span><span class="text-rose-400">${log.discountPercent}%</span></div>
-          </div>
-        </div>
-      `,
-        )
-        .join("");
-    }
-  } else {
-    title.innerHTML = `Showroom Test Drives Sheet <span class="ml-2 text-xs bg-brand-500/10 text-brand-500 px-2.5 py-0.5 rounded-full border border-brand-500/20">Active Database</span>`;
-    const localDrives = JSON.parse(
-      localStorage.getItem("testDrivesLogs") || "[]",
-    );
-
-    if (localDrives.length === 0) {
-      renderArea.innerHTML = `
-        <div class="text-center py-12 text-slate-500">
-          <i class="fa-solid fa-road text-3xl opacity-35 mb-2 block"></i>
-          No completed test-drives reported on current workstation.
-        </div>`;
-    } else {
-      renderArea.innerHTML = localDrives
-        .map(
-          (drive, i) => `
-        <div class="p-4 rounded-xl bg-slate-950 border border-slate-850 shadow flex items-center justify-between text-sm">
-          <div class="space-y-1">
-            <span class="text-slate-500 text-xs block">${drive.date}</span>
-            <strong class="text-white text-base">${drive.vehicle}</strong>
-            <span class="text-slate-400 block text-xs">Logged by: <span class="text-slate-200">${drive.salesperson}</span></span>
-          </div>
-          <div class="text-right">
-            <span class="text-brand-500 font-extrabold text-base block">${formatCurrency(drive.price)} Fee</span>
-            <span class="text-[10px] text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 rounded-full uppercase font-bold">Logged ✓</span>
-          </div>
-        </div>
-      `,
-        )
-        .join("");
-    }
-  }
-
-  modal.classList.remove("pointer-events-none");
-  modal.classList.add("opacity-100");
-  card.classList.remove("scale-95");
-  card.classList.add("scale-100");
-}
-
-function closeLogsModal() {
-  const modal = document.getElementById("logs-modal");
-  const card = document.getElementById("logs-modal-card");
-  if (!modal || !card) return;
-
-  modal.classList.add("pointer-events-none");
-  modal.classList.remove("opacity-100");
-  card.classList.add("scale-95");
-  card.classList.remove("scale-100");
-}
-
-function clearLocalLogs() {
-  localStorage.removeItem("salesLogs");
-  localStorage.removeItem("testDrivesLogs");
-  localStorage.removeItem("salesLogText");
-  showToast("Workstation logs cleared successfully.", "warning");
-  closeLogsModal();
-}
-
-// ─── SEARCH HANDLER ───────────────────────────────────────────────
-function setupSearch() {
-  const searchInput = document.getElementById("search-input");
-  if (!searchInput) return;
-  searchInput.addEventListener("input", (event) => {
-    currentSearchTerm = event.target.value;
-    displayCategories(currentSearchTerm);
-  });
-}
-
-// ─── MODAL CONTROLLERS ────────────────────────────────────────────
 function setupModal() {
   const modal = document.getElementById("vehicle-modal");
+  if (!modal) return; // ensure modals exist on page
+  const closeBtn = modal.querySelector(".close-btn");
   const discountSelect = document.getElementById("modal-discount-select");
   const sellButton = document.getElementById("sell-car-button");
+  const sellModal = document.getElementById("sell-modal");
+  const sellClose = sellModal ? sellModal.querySelector(".sell-close") : null;
   const sellForm = document.getElementById("sell-form");
-  if (!modal) return;
 
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => {
     if (e.target === modal) closeModal();
   });
@@ -1943,25 +1828,30 @@ function setupModal() {
     sellButton.addEventListener("click", openSellModal);
   }
 
+  if (sellClose) {
+    sellClose.addEventListener("click", closeSellModal);
+  }
+
+  if (sellModal) {
+    sellModal.addEventListener("click", (e) => {
+      if (e.target === sellModal) closeSellModal();
+    });
+  }
+
   if (sellForm) {
     sellForm.addEventListener("submit", submitSellForm);
   }
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      const sellModal = document.getElementById("sell-modal");
-      const loginModal = document.getElementById("login-modal");
-      const logsModal = document.getElementById("logs-modal");
-      const rosterModal = document.getElementById("roster-cheat-sheet");
-
-      if (sellModal && sellModal.classList.contains("opacity-100")) {
+      if (sellModal && sellModal.classList.contains("active")) {
         closeSellModal();
-      } else if (loginModal && loginModal.classList.contains("opacity-100")) {
-        closeLoginModal();
-      } else if (logsModal && logsModal.classList.contains("opacity-100")) {
-        closeLogsModal();
-      } else if (rosterModal && rosterModal.classList.contains("opacity-100")) {
-        closeRosterCheatSheet();
+      } else if (
+        document
+          .getElementById("custom-login-overlay")
+          .classList.contains("active")
+      ) {
+        closeDynamicLogin();
       } else {
         closeModal();
       }
@@ -1980,150 +1870,134 @@ function setupModal() {
 function openModal(vehicle) {
   activeVehicle = vehicle;
   const modal = document.getElementById("vehicle-modal");
-  const card = document.getElementById("vehicle-modal-card");
   const discountSelect = document.getElementById("modal-discount-select");
-  if (!modal || !card) return;
 
-  document.getElementById("modal-image").src = vehicle.image;
-  document.getElementById("modal-image").alt = vehicle.name;
-  document.getElementById("modal-name").textContent = vehicle.name;
-  document.getElementById("modal-price").textContent = formatCurrency(
-    vehicle.price,
-  );
-  document.getElementById("modal-class").textContent = vehicle.class;
+  if (!modal) return;
 
-  const badge = document.getElementById("modal-class-badge");
-  if (badge) {
-    badge.textContent = `${vehicle.class} CLASS`;
-    if (vehicle.class === "S") {
-      badge.className =
-        "absolute top-4 left-4 z-20 bg-rose-500 text-white font-black px-3 py-1 rounded-lg text-sm tracking-wider shadow-lg";
-    } else if (vehicle.class === "A") {
-      badge.className =
-        "absolute top-4 left-4 z-20 bg-amber-500 text-slate-950 font-black px-3 py-1 rounded-lg text-sm tracking-wider shadow-lg";
-    } else {
-      badge.className =
-        "absolute top-4 left-4 z-20 bg-slate-700 text-white font-black px-3 py-1 rounded-lg text-sm tracking-wider shadow-lg";
-    }
-  }
+  const modalImg = document.getElementById("modal-image");
+  if (modalImg) modalImg.src = vehicle.image;
+
+  const modalName = document.getElementById("modal-name");
+  if (modalName) modalName.textContent = vehicle.name;
+
+  const modalPrice = document.getElementById("modal-price");
+  if (modalPrice) modalPrice.textContent = formatCurrency(vehicle.price);
+
+  const modalClass = document.getElementById("modal-class");
+  if (modalClass) modalClass.textContent = vehicle.class;
 
   if (discountSelect) {
     discountSelect.value = vehicle.discount || 0;
     updateModalDiscount(Number(discountSelect.value));
   }
 
-  const tdButton = document.getElementById("test-drive-button");
-  if (tdButton) {
-    tdButton.innerHTML = `<i class="fa-solid fa-road text-slate-400"></i> <span>Test Drive ($500)</span>`;
-    const newTdButton = tdButton.cloneNode(true);
-    tdButton.parentNode.replaceChild(newTdButton, tdButton);
-    newTdButton.addEventListener("click", handleTestDriveSubmit);
+  // Inject Test Drive button if not already present
+  const sellButton = document.getElementById("sell-car-button");
+  if (sellButton && !document.getElementById("test-drive-button")) {
+    const tdButton = document.createElement("button");
+    tdButton.id = "test-drive-button";
+    tdButton.className = "test-drive-button";
+    tdButton.textContent = "Test Drive ($500)";
+    sellButton.parentNode.insertBefore(tdButton, sellButton.nextSibling);
+    tdButton.addEventListener("click", handleTestDriveSubmit);
   }
 
-  modal.classList.remove("pointer-events-none");
-  modal.classList.add("opacity-100");
-  card.classList.remove("scale-95");
-  card.classList.add("scale-100");
+  modal.classList.add("active");
 }
 
-function closeModal() {
-  const modal = document.getElementById("vehicle-modal");
-  const card = document.getElementById("vehicle-modal-card");
-  if (modal && card) {
-    modal.classList.add("pointer-events-none");
-    modal.classList.remove("opacity-100");
-    card.classList.add("scale-95");
-    card.classList.remove("scale-100");
-  }
-}
+async function handleTestDriveSubmit() {
+  if (!activeVehicle) return;
 
-function updateModalDiscount(discountPercent) {
-  const discountRow = document.getElementById("discount-row");
-  const finalPrice = Math.round(
-    activeVehicle.price * (1 - discountPercent / 100),
-  );
-
-  document.getElementById("modal-final-price").textContent =
-    formatCurrency(finalPrice);
-
-  if (discountPercent > 0) {
-    const discountEl = document.getElementById("modal-discount");
-    if (discountEl) discountEl.textContent = `-${discountPercent}%`;
-    discountRow.classList.remove("hidden");
-    discountRow.classList.add("flex");
-  } else {
-    discountRow.classList.add("hidden");
-    discountRow.classList.remove("flex");
-  }
-}
-
-// ─── TRANSACTION MODAL MANAGEMENT (RESTRICTED TO ROSTER) ───────
-function openSellModal() {
+  // Intercept Test Drives without login!
   if (!currentUser) {
     closeModal();
-    openLoginModal();
-    showToast(
-      "Authorization Required: Please log in using your staff profile to perform sales operations.",
-      "warning",
+    openDynamicLogin();
+    showDynamicToast("Please authenticate to log test drives.", "warning");
+    return;
+  }
+
+  const payload = {
+    date: new Date().toLocaleString("en-GB"),
+    salesperson: currentUser.fullname, // Force authenticated user
+    vehicle: activeVehicle.name,
+    price: 500,
+  };
+
+  const tdButton = document.getElementById("test-drive-button");
+  const originalText = tdButton?.textContent || "Saving...";
+  if (tdButton) {
+    tdButton.textContent = "Saving...";
+    tdButton.disabled = true;
+  }
+
+  // Save locally
+  const localDrives = JSON.parse(
+    localStorage.getItem("testDrivesLogs") || "[]",
+  );
+  localDrives.push(payload);
+  localStorage.setItem("testDrivesLogs", JSON.stringify(localDrives));
+
+  try {
+    await postJsonData(payload, POST_ENDPOINT_TEST_DRIVES);
+    console.log("Test drive synced to Google Sheets.");
+    if (tdButton) {
+      tdButton.textContent = "Logged! ✓";
+      tdButton.style.backgroundColor = "#2ecc71";
+    }
+  } catch (err) {
+    console.error("Test drive sync failed:", err);
+    if (tdButton) {
+      tdButton.textContent = "Saved Locally";
+      tdButton.style.backgroundColor = "#f39c12";
+    }
+  } finally {
+    setTimeout(() => {
+      if (tdButton) {
+        tdButton.textContent = originalText;
+        tdButton.style.backgroundColor = "";
+        tdButton.disabled = false;
+      }
+      closeModal();
+    }, 1200);
+  }
+}
+
+function openSellModal() {
+  // Intercept Sell Modal without login!
+  if (!currentUser) {
+    closeModal();
+    openDynamicLogin();
+    showDynamicToast(
+      "Authorization Required: Please log in to make a sale.",
+      "error",
     );
     return;
   }
 
   const vehicleModal = document.getElementById("vehicle-modal");
   const sellModal = document.getElementById("sell-modal");
-  const card = document.getElementById("sell-modal-card");
   const confirmation = document.getElementById("sell-confirmation");
 
   const salespersonEl = document.getElementById("sell-salesperson");
   if (salespersonEl) {
+    // PREFILL the authentic user name directly to the form and lock it
     salespersonEl.value = currentUser.fullname;
-    salespersonEl.disabled = true; // Lock field permanently to guarantee authorization
+    salespersonEl.disabled = true; // prevent forgery
   }
-
-  const discountPercent = Number(
-    document.getElementById("modal-discount-select").value || 0,
-  );
-  const sellPriceValue = Math.round(
-    activeVehicle.price * (1 - discountPercent / 100),
-  );
-
-  document.getElementById("sell-modal-vehicle-name").textContent =
-    activeVehicle.name;
-  document.getElementById("sell-modal-vehicle-price").textContent =
-    formatCurrency(sellPriceValue);
 
   ["sell-customer", "sell-id", "sell-plate"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
 
-  if (confirmation) {
-    confirmation.className =
-      "hidden p-4 rounded-xl text-sm font-semibold border";
-    confirmation.textContent = "";
-  }
-
-  if (vehicleModal) {
-    vehicleModal.classList.add("pointer-events-none");
-    vehicleModal.classList.remove("opacity-100");
-  }
-  if (sellModal && card) {
-    sellModal.classList.remove("pointer-events-none");
-    sellModal.classList.add("opacity-100");
-    card.classList.remove("scale-95");
-    card.classList.add("scale-100");
-  }
+  if (confirmation) confirmation.textContent = "";
+  if (vehicleModal) vehicleModal.classList.remove("active");
+  if (sellModal) sellModal.classList.add("active");
 }
 
 function closeSellModal() {
   const sellModal = document.getElementById("sell-modal");
-  const card = document.getElementById("sell-modal-card");
-  if (sellModal && card) {
-    sellModal.classList.add("pointer-events-none");
-    sellModal.classList.remove("opacity-100");
-    card.classList.add("scale-95");
-    card.classList.remove("scale-100");
-  }
+  if (sellModal) sellModal.classList.remove("active");
 }
 
 function isInvalidLicensePlate(value) {
@@ -2144,36 +2018,37 @@ function isInvalidLicensePlate(value) {
   return /^[\s\W_-]+$/.test(value);
 }
 
-// ─── REGISTER SALE SUBMIT ─────────────────────────────────────────
 async function submitSellForm(event) {
   event.preventDefault();
 
+  // Guard rails
   if (!currentUser) {
-    showToast("Error: Session expired or invalid.", "error");
     closeSellModal();
-    openLoginModal();
+    openDynamicLogin();
+    showDynamicToast("Session expired, please login.", "error");
     return;
   }
 
+  // Force assignment from the authorized active user
   const salesperson = currentUser.fullname;
+
   const customer = document.getElementById("sell-customer").value.trim();
   const idNumber = document.getElementById("sell-id").value.trim();
   const licensePlate = document.getElementById("sell-plate").value.trim();
   const confirmation = document.getElementById("sell-confirmation");
 
   if (!salesperson || !customer || !idNumber) {
-    confirmation.textContent =
-      "Please complete every field before confirming the sale.";
-    confirmation.className =
-      "block bg-rose-500/10 border-rose-500/20 text-rose-400 p-4 rounded-xl text-sm font-semibold border";
+    if (confirmation) {
+      confirmation.textContent =
+        "Please complete every field before confirming the sale.";
+    }
     return;
   }
 
   if (isInvalidLicensePlate(licensePlate)) {
-    confirmation.textContent =
-      "License plate error: Check vehicle registration for valid plate.";
-    confirmation.className =
-      "block bg-rose-500/10 border-rose-500/20 text-rose-400 p-4 rounded-xl text-sm font-semibold border";
+    if (confirmation) {
+      confirmation.textContent = "Check vehicle registration for plate";
+    }
     return;
   }
 
@@ -2184,7 +2059,6 @@ async function submitSellForm(event) {
     activeVehicle.price * (1 - discountPercent / 100),
   );
   const saleDate = new Date().toISOString();
-
   const saleText = `\`\`\`
 Date: ${saleDate}
 Salesperson: ${salesperson}
@@ -2210,123 +2084,54 @@ License plate: ${licensePlate}
     rawText: saleText,
   });
 
-  confirmation.className =
-    "block bg-emerald-500/10 border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-sm font-semibold border";
-  confirmation.textContent =
-    "Sale submitted successfully! Record generated and details copied to clipboard.";
-
-  const copySuccess = copyTextToClipboard(saleText);
-  if (copySuccess) {
-    showToast("Sales documentation copied to clipboard!", "success");
-  } else {
-    showToast("Sale logged! Manual clipboard fallback triggered.", "warning");
+  if (confirmation) {
+    confirmation.textContent =
+      "Sale submitted successfully! Details copied to clipboard.";
   }
+
+  navigator.clipboard
+    .writeText(saleText)
+    .then(() => {
+      if (
+        confirmation &&
+        !confirmation.textContent?.includes("Details copied")
+      ) {
+        confirmation.textContent += " Details copied to clipboard.";
+      }
+      showDynamicToast("Sale fully registered!", "success");
+    })
+    .catch(() => {
+      if (confirmation && !confirmation.textContent?.includes("copied")) {
+        confirmation.textContent = "Sale submitted, but clipboard copy failed.";
+      }
+    });
 
   setTimeout(() => {
     closeSellModal();
   }, 1800);
 }
 
-function persistSaleLog(entry) {
-  const salesLogs = JSON.parse(localStorage.getItem("salesLogs") || "[]");
-  const record = {
-    date: new Date().toLocaleString("en-GB"),
-    ...entry,
-  };
-  salesLogs.push(record);
-  localStorage.setItem("salesLogs", JSON.stringify(salesLogs));
+function updateModalDiscount(discountPercent) {
+  const discountRow = document.getElementById("discount-row");
+  if (!discountRow) return;
 
-  const rawText = localStorage.getItem("salesLogText");
-  if (rawText !== null) {
-    const separator = rawText.trim() ? "\n\n----\n\n" : "";
-    localStorage.setItem(
-      "salesLogText",
-      rawText + separator + (record.rawText || ""),
-    );
+  const finalPrice = Math.round(
+    activeVehicle.price * (1 - discountPercent / 100),
+  );
+
+  const finalPriceEl = document.getElementById("modal-final-price");
+  if (finalPriceEl) finalPriceEl.textContent = formatCurrency(finalPrice);
+
+  if (discountPercent > 0) {
+    const discEl = document.getElementById("modal-discount");
+    if (discEl) discEl.textContent = discountPercent + "%";
+    discountRow.style.display = "flex";
   } else {
-    localStorage.setItem("salesLogText", record.rawText || "");
-  }
-
-  // Sync to Google Spreadsheet Endpoint
-  const payload = {
-    date: record.date,
-    salesperson: record.salesperson,
-    customer: record.customer,
-    id_number: record.idNumber,
-    vehicle: record.vehicle,
-    sell_price: formatCurrency(record.sellPrice),
-    discount: record.discountPercent + "%",
-    license_plate: record.licensePlate,
-  };
-
-  if (POST_ENDPOINT.trim()) {
-    postJsonData(payload, POST_ENDPOINT)
-      .then(() => console.log("Sale synced to cloud Spreadsheet."))
-      .catch((error) => console.error("Cloud synchronization failure:", error));
+    discountRow.style.display = "none";
   }
 }
 
-// ─── TEST DRIVE HANDLER ───────────────────────────────────────────
-async function handleTestDriveSubmit() {
-  if (!activeVehicle) return;
-
-  // Enforce staff profile authentication for drive logs
-  if (!currentUser) {
-    closeModal();
-    openLoginModal();
-    showToast(
-      "Authorization Required: Please log in using your staff profile to log test drives.",
-      "warning",
-    );
-    return;
-  }
-
-  const salespersonName = currentUser.fullname;
-
-  const payload = {
-    date: new Date().toLocaleString("en-GB"),
-    salesperson: salespersonName,
-    vehicle: activeVehicle.name,
-    price: 500,
-  };
-
-  const tdButton = document.getElementById("test-drive-button");
-  if (tdButton) {
-    tdButton.textContent = "Logging...";
-    tdButton.disabled = true;
-  }
-
-  const localDrives = JSON.parse(
-    localStorage.getItem("testDrivesLogs") || "[]",
-  );
-  localDrives.push(payload);
-  localStorage.setItem("testDrivesLogs", JSON.stringify(localDrives));
-
-  try {
-    await postJsonData(payload, POST_ENDPOINT_TEST_DRIVES);
-    showToast(
-      `Test drive fee logged ($500) under ${salespersonName}!`,
-      "success",
-    );
-    if (tdButton) {
-      tdButton.textContent = "Drive Logged ✓";
-      tdButton.style.backgroundColor = "#10b981";
-    }
-  } catch (err) {
-    console.error("Test drive cloud sync failed:", err);
-    showToast("Drive logged locally (Workstation offline mode).", "warning");
-    if (tdButton) {
-      tdButton.textContent = "Saved Locally";
-      tdButton.style.backgroundColor = "#f59e0b";
-    }
-  } finally {
-    setTimeout(() => {
-      if (tdButton) {
-        tdButton.innerHTML = `<i class="fa-solid fa-road text-slate-400"></i> <span>Test Drive ($500)</span>`;
-        tdButton.style.backgroundColor = "";
-        tdButton.disabled = false;
-      }
-      closeModal();
-    }, 1200);
-  }
+function closeModal() {
+  const modal = document.getElementById("vehicle-modal");
+  if (modal) modal.classList.remove("active");
 }
