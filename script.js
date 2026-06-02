@@ -25,6 +25,7 @@ const roster = [
   { username: "rumi", password: "Rumi264", fullname: "Rumi Valentine" },
   { username: "sallie", password: "Sallie193", fullname: "Sallie Sparquelz" },
   { username: "trainee", password: "Trainee123", fullname: "Trainee Employee" },
+  {    username: "elijah", password: "Elijah846", fullname: "Elijah Randolf" },
   {
     username: "luxery",
     password: "JohnnyIsAmazing67",
