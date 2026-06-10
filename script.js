@@ -32,6 +32,9 @@ const roster = [
     fullname: "Luxery Autos",
   },
   { username: "marley", password: "Marley193", fullname: "Marley Cookout" },
+   { username: "enrique", password: "Enriqe645", fullname: "Enriqe Guamaman" },
+    { username: "eugine", password: "Eugine615", fullname: "Eugine Jefferson" },
+
 ];
 
 // Vehicle Inventory Data — organized by category
