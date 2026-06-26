@@ -22,7 +22,7 @@ const roster = [
   { username: "tobias", password: "Tobias739", fullname: "Tobias Nobel" },
   { username: "cynthia", password: "Cynthia312", fullname: "Cynthia Jones" },
   { username: "tyler", password: "Tyler778", fullname: "Tyler Omo" },
-  { username: "rumi", password: "Rumi264", fullname: "Rumi Valentine" },
+  { username: "bubba ", password: "Bubba545", fullname: "Bubba Stroke" },
   { username: "sallie", password: "Sallie193", fullname: "Sallie Sparquelz" },
   { username: "trainee", password: "Trainee123", fullname: "Trainee Employee" },
   {    username: "elijah", password: "Elijah846", fullname: "Elijah Randolf" },
@@ -34,6 +34,7 @@ const roster = [
   { username: "marley", password: "Marley193", fullname: "Marley Cookout" },
    { username: "enrique", password: "Enriqe645", fullname: "Enriqe Guamaman" },
     { username: "eugine", password: "Eugine615", fullname: "Eugine Jefferson" },
+    { username: "wiremu ", password: "Wiremu678", fullname: "Wiremu Pomare" },
 
 ];
 
